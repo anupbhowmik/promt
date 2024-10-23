@@ -25,7 +25,7 @@ def scipy_sparse_to_spmatrix(A):
     return SP
 
 
-def barycenter(A, M, weights=None, verbose=False, log=False, solver='interior-point'):
+def barycenter(A, M, weights=None, verbose=False, log=False, solver='highs-ipm'):
     r"""Compute the Wasserstein barycenter of distributions A
 
      The function solves the following optimization problem [16]:
@@ -52,7 +52,7 @@ def barycenter(A, M, weights=None, verbose=False, log=False, solver='interior-po
     reg : float
         Regularization term >0
     weights : np.ndarray (n,)
-        Weights of each histogram a_i on the simplex (barycentric coodinates)
+        Weights of each histogram a_i on the simplex (barycentric coordinates)
     verbose : bool, optional
         Print information along iterations
     log : bool, optional
@@ -80,7 +80,7 @@ def barycenter(A, M, weights=None, verbose=False, log=False, solver='interior-po
     if weights is None:
         weights = np.ones(A.shape[1]) / A.shape[1]
     else:
-        assert(len(weights) == A.shape[1])
+        assert len(weights) == A.shape[1]
 
     n_distributions = A.shape[1]
     n = A.shape[0]
@@ -115,13 +115,13 @@ def barycenter(A, M, weights=None, verbose=False, log=False, solver='interior-po
     A_eq = sps.vstack((A_eq1, A_eq2))
     b_eq = np.concatenate((b_eq1, b_eq2))
 
-    if not cvxopt or solver in ['interior-point']:
+    if not cvxopt or solver in ['interior-point', 'highs', 'highs-ipm', 'highs-ds']:
         # cvxopt not installed or interior point
 
         if solver is None:
             solver = 'interior-point'
 
-        options = {'sparse': True, 'disp': verbose}
+        options = {'disp': verbose}
         sol = sp.optimize.linprog(c, A_eq=A_eq, b_eq=b_eq, method=solver,
                                   options=options)
         x = sol.x

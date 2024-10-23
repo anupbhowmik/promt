@@ -399,7 +399,7 @@ def compute_next_removal(phi, delta, current_gamma):
 
 def complement_schur(M_current, b, d, id_pop):
     r""" This function computes the inverse of the design matrix in the \
-    regularization path using the  Schur complement. Two cases may arise:
+    regularization path using the Schur complement. Two cases may arise:
 
     Case 1: one variable is added to the active set
 
@@ -762,7 +762,7 @@ def semi_relaxed_path(a: np.array, b: np.array, C: np.array, reg=1e-4,
         active_index.append(i * m + j)
     gamma_list = []
     t_list = []
-    current_gamma = np.Inf
+    current_gamma = np.inf
     augmented_H0 = construct_augmented_H(active_index, m, Hc, HrHr)
     add_col = np.array([])
     id_pop = -1
