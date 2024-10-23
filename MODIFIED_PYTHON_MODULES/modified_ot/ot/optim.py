@@ -12,14 +12,14 @@ import numpy as np
 import warnings
 from .lp import emd
 from .bregman import sinkhorn
+from .utils import list_to_array
 from .backend import get_backend
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     try:
-        from scipy.optimize._linesearch import scalar_search_armijo
-    except ModuleNotFoundError:
-        # scipy<1.8.0
+        from scipy.optimize import scalar_search_armijo
+    except ImportError:
         from scipy.optimize.linesearch import scalar_search_armijo
 
 # The corresponding scipy function does not work for matrices
@@ -27,7 +27,7 @@ with warnings.catch_warnings():
 
 def line_search_armijo(
     f, xk, pk, gfk, old_fval, args=(), c1=1e-4,
-    alpha0=0.99, alpha_min=0., alpha_max=None, nx=None, **kwargs
+    alpha0=0.99, alpha_min=None, alpha_max=None, nx=None, **kwargs
 ):
     r"""
     Armijo linesearch function that works with matrices
@@ -56,7 +56,7 @@ def line_search_armijo(
         :math:`c_1` const in armijo rule (>0)
     alpha0 : float, optional
         initial step (>0)
-    alpha_min : float, default=0.
+    alpha_min : float, optional
         minimum value for alpha
     alpha_max : float, optional
         maximum value for alpha
@@ -73,6 +73,7 @@ def line_search_armijo(
 
     """
     if nx is None:
+        xk, pk, gfk = list_to_array(xk, pk, gfk)
         xk0, pk0 = xk, pk
         nx = get_backend(xk0, pk0)
     else:
@@ -88,14 +89,6 @@ def line_search_armijo(
     fc = [0]
 
     def phi(alpha1):
-        # it's necessary to check boundary condition here for the coefficient
-        # as the callback could be evaluated for negative value of alpha by
-        # `scalar_search_armijo` function here:
-        #
-        # https://github.com/scipy/scipy/blob/11509c4a98edded6c59423ac44ca1b7f28fba1fd/scipy/optimize/linesearch.py#L686
-        #
-        # see more details https://github.com/PythonOT/POT/issues/502
-        alpha1 = np.clip(alpha1, alpha_min, alpha_max)
         # The callable function operates on nx backend
         fc[0] += 1
         alpha10 = nx.from_numpy(alpha1)
@@ -116,13 +109,250 @@ def line_search_armijo(
 
     derphi0 = np.sum(pk * gfk)  # Quickfix for matrices
     alpha, phi1 = scalar_search_armijo(
-        phi, phi0, derphi0, c1=c1, alpha0=alpha0, amin=alpha_min)
+        phi, phi0, derphi0, c1=c1, alpha0=alpha0)
 
     if alpha is None:
         return 0., fc[0], nx.from_numpy(phi0, type_as=xk0)
     else:
-        alpha = np.clip(alpha, alpha_min, alpha_max)
+        if alpha_min is not None or alpha_max is not None:
+            alpha = np.clip(alpha, alpha_min, alpha_max)
         return nx.from_numpy(alpha, type_as=xk0), fc[0], nx.from_numpy(phi1, type_as=xk0)
+
+
+def generic_conditional_gradient_MERFISH(a, b, M1, M2, f, df, reg1, reg2, lp_solver, line_search,
+                                         gamma,
+                                          G0=None,
+                                 numItermax=6000, stopThr=1e-9,
+                                 stopThr2=1e-9, verbose=False, log=False, **kwargs, ):
+    r"""
+    Solve the general regularized OT problem or its semi-relaxed version with
+    conditional gradient or generalized conditional gradient depending on the
+    provided linear program solver.
+
+        The function solves the following optimization problem if set as a conditional gradient:
+
+    .. math::
+        \gamma = \mathop{\arg \min}_\gamma \quad \langle \gamma, \mathbf{M} \rangle_F +
+        \mathrm{reg_1} \cdot f(\gamma)
+
+        s.t. \ \gamma \mathbf{1} &= \mathbf{a}
+
+             \gamma^T \mathbf{1} &= \mathbf{b} (optional constraint)
+
+             \gamma &\geq 0
+
+    where :
+
+    - :math:`\mathbf{M}` is the (`ns`, `nt`) metric cost matrix
+    - :math:`f` is the regularization term (and `df` is its gradient)
+    - :math:`\mathbf{a}` and :math:`\mathbf{b}` are source and target weights (sum to 1)
+
+    The algorithm used for solving the problem is conditional gradient as discussed in :ref:`[1] <references-cg>`
+
+        The function solves the following optimization problem if set a generalized conditional gradient:
+
+    .. math::
+        \gamma = \mathop{\arg \min}_\gamma \quad \langle \gamma, \mathbf{M} \rangle_F +
+        \mathrm{reg_1}\cdot f(\gamma) + \mathrm{reg_2}\cdot\Omega(\gamma)
+
+        s.t. \ \gamma \mathbf{1} &= \mathbf{a}
+
+             \gamma^T \mathbf{1} &= \mathbf{b}
+
+             \gamma &\geq 0
+
+    where :
+
+    - :math:`\Omega` is the entropic regularization term :math:`\Omega(\gamma)=\sum_{i,j} \gamma_{i,j}\log(\gamma_{i,j})`
+
+    The algorithm used for solving the problem is the generalized conditional gradient as discussed in :ref:`[5, 7] <references-gcg>`
+
+    Parameters
+    ----------
+    a : array-like, shape (ns,)
+        samples weights in the source domain
+    b : array-like, shape (nt,)
+        samples weights in the target domain
+
+    a: initial distribution(uniform) of sliceA spots
+    b: initial distribution(uniform) of sliceB spots
+
+    M1: cosine dist of gene expression matrices of two slices
+    M2: jensenshannon dist of niche of two slices
+    f : function
+        Regularization function taking a transportation matrix as argument
+    df: function
+        Gradient of the regularization function taking a transportation matrix as argument
+    reg1 : float
+        Regularization term >0
+    reg2 : float,
+        Entropic Regularization term >0. Ignored if set to None.
+    lp_solver: function,
+        linear program solver for direction finding of the (generalized) conditional gradient.
+        If set to emd will solve the general regularized OT problem using cg.
+        If set to lp_semi_relaxed_OT will solve the general regularized semi-relaxed OT problem using cg.
+        If set to sinkhorn will solve the general regularized OT problem using generalized cg.
+    line_search: function,
+        Function to find the optimal step. Currently used instances are:
+        line_search_armijo (generic solver). solve_gromov_linesearch for (F)GW problem.
+        solve_semirelaxed_gromov_linesearch for sr(F)GW problem. gcg_linesearch for the Generalized cg.
+    G0 :  array-like, shape (ns,nt), optional
+        initial guess (default is indep joint density)
+    numItermax : int, optional
+        Max number of iterations
+    stopThr : float, optional
+        Stop threshold on the relative variation (>0)
+    stopThr2 : float, optional
+        Stop threshold on the absolute variation (>0)
+    verbose : bool, optional
+        Print information along iterations
+    log : bool, optional
+        record log if True
+
+    Added by Anup Bhowmik
+    ------------------------
+    gamma: float, optional
+        weight of the second regularization term (default is 0.5)
+    --------------------------
+
+
+    **kwargs : dict
+             Parameters for linesearch
+
+    Returns
+    -------
+    gamma : (ns x nt) ndarray
+        Optimal transportation matrix for the given parameters
+    log : dict
+        log dictionary return only if log==True in parameters
+
+
+    .. _references-cg:
+    .. _references_gcg:
+    References
+    ----------
+
+    .. [1] Ferradans, S., Papadakis, N., Peyré, G., & Aujol, J. F. (2014). Regularized discrete optimal transport. SIAM Journal on Imaging Sciences, 7(3), 1853-1882.
+
+    .. [5] N. Courty; R. Flamary; D. Tuia; A. Rakotomamonjy, "Optimal Transport for Domain Adaptation," in IEEE Transactions on Pattern Analysis and Machine Intelligence , vol.PP, no.99, pp.1-1
+
+    .. [7] Rakotomamonjy, A., Flamary, R., & Courty, N. (2015). Generalized conditional gradient: analysis of convergence and applications. arXiv preprint arXiv:1510.06567.
+
+    See Also
+    --------
+    ot.lp.emd : Unregularized optimal transport
+    ot.bregman.sinkhorn : Entropic regularized optimal transport
+    """
+
+    print("gamma:", gamma)
+    print("numItermax:", numItermax)
+ 
+
+
+    # new code starts
+    a, b, M1, M2, G0 = list_to_array(a, b, M1, M2, G0)
+    if isinstance(M1, int) or isinstance(M1, float):
+        nx = get_backend(a, b)
+    else:
+        nx = get_backend(a, b, M1)
+
+    if isinstance(M2, int) or isinstance(M2, float):
+        nx = get_backend(a, b)
+    else:
+        nx = get_backend(a, b, M2)
+
+    # new code ends
+
+    loop = 1
+
+    if log:
+        log = {'loss': []}
+
+    if G0 is None:
+        # G0 is kept None by default
+        
+        G2 = nx.outer(a, b)
+        # make G uniform distribution matrix of size (ns, nt)
+        G1 = nx.ones((a.shape[0], b.shape[0])) / (a.shape[0] * b.shape[0])
+
+        # todo: integrate the cell-type aware initialization
+
+
+        G = G1
+        # print the shape of G
+        # print("G shape: ", G.shape)
+    else:
+        # to not change G0 in place.
+        G = nx.copy(G0)
+
+    def cost(G):
+        alpha = reg1
+        
+        # with niche aware
+        return (1-alpha) * (nx.sum(M1 * G) + gamma * nx.sum(M2 * G)) + alpha * f(G)
+
+        # without niche aware
+        # return (1-alpha) * (nx.sum(M1 * G)) + alpha * f(G)
+
+    
+
+    cost_G = cost(G)
+    if log:
+        log['loss'].append(cost_G)
+
+    it = 0
+
+    if verbose:
+        print('{:5s}|{:12s}|{:8s}|{:8s}'.format(
+            'It.', 'Loss', 'Relative loss', 'Absolute loss') + '\n' + '-' * 48)
+        print('{:5d}|{:8e}|{:8e}|{:8e}'.format(it, cost_G, 0, 0))
+
+    while loop:
+
+        it += 1
+        old_cost_G = cost_G
+        # problem linearization
+        # gradient descent
+        Mi = M1 + reg1 * df(G)
+
+        if not (reg2 is None):
+            Mi = Mi + reg2 * (1 + nx.log(G))
+        # set M positive
+        Mi = Mi + nx.min(Mi)
+
+        # solve linear program
+        Gc, innerlog_ = lp_solver(a, b, Mi, **kwargs)
+
+        # line search
+        deltaG = Gc - G
+
+        alpha, fc, cost_G = line_search(cost, G, deltaG, Mi, cost_G, **kwargs)
+
+        G = G + alpha * deltaG
+
+        # test convergence
+        if it >= numItermax:
+            loop = 0
+
+        abs_delta_cost_G = abs(cost_G - old_cost_G)
+        relative_delta_cost_G = abs_delta_cost_G / abs(cost_G)
+        if relative_delta_cost_G < stopThr or abs_delta_cost_G < stopThr2:
+            loop = 0
+
+        if log:
+            log['loss'].append(cost_G)
+
+        if verbose:
+            if it % 20 == 0:
+                print('{:5s}|{:12s}|{:8s}|{:8s}'.format(
+                    'It.', 'Loss', 'Relative loss', 'Absolute loss') + '\n' + '-' * 48)
+            print('{:5d}|{:8e}|{:8e}|{:8e}'.format(it, cost_G, relative_delta_cost_G, abs_delta_cost_G))
+
+    if log:
+        log.update(innerlog_)
+        return G, log
+    else:
+        return G
 
 
 def generic_conditional_gradient(a, b, M, f, df, reg1, reg2, lp_solver, line_search, G0=None,
@@ -235,7 +465,7 @@ def generic_conditional_gradient(a, b, M, f, df, reg1, reg2, lp_solver, line_sea
     ot.lp.emd : Unregularized optimal transport
     ot.bregman.sinkhorn : Entropic regularized optimal transport
     """
-
+    a, b, M, G0 = list_to_array(a, b, M, G0)
     if isinstance(M, int) or isinstance(M, float):
         nx = get_backend(a, b)
     else:
@@ -252,12 +482,19 @@ def generic_conditional_gradient(a, b, M, f, df, reg1, reg2, lp_solver, line_sea
         # to not change G0 in place.
         G = nx.copy(G0)
 
-    if reg2 is None:
+    if reg2 is None:    # reg2 is None here for cg
         def cost(G):
-            return nx.sum(M * G) + reg1 * f(G)
+            # this is fgw cost function
+            # need to use our own function to generate cost
+            return nx.sum(M * G) + reg1 * f(G)  # M * G is the element-wise product of M and G
+            # reg1 = alpha
+            # nx.sum(M * G) is the first component of PASTE cost function
+            # (1 - alpha) * M is sent as a parameter `M` to this cg function
+    
     else:
         def cost(G):
             return nx.sum(M * G) + reg1 * f(G) + reg2 * nx.sum(G * nx.log(G))
+
     cost_G = cost(G)
     if log:
         log['loss'].append(cost_G)
@@ -274,6 +511,7 @@ def generic_conditional_gradient(a, b, M, f, df, reg1, reg2, lp_solver, line_sea
         it += 1
         old_cost_G = cost_G
         # problem linearization
+        # gradient descent
         Mi = M + reg1 * df(G)
 
         if not (reg2 is None):
@@ -296,7 +534,7 @@ def generic_conditional_gradient(a, b, M, f, df, reg1, reg2, lp_solver, line_sea
             loop = 0
 
         abs_delta_cost_G = abs(cost_G - old_cost_G)
-        relative_delta_cost_G = abs_delta_cost_G / abs(cost_G) if cost_G != 0. else np.nan
+        relative_delta_cost_G = abs_delta_cost_G / abs(cost_G)
         if relative_delta_cost_G < stopThr or abs_delta_cost_G < stopThr2:
             loop = 0
 
@@ -314,6 +552,102 @@ def generic_conditional_gradient(a, b, M, f, df, reg1, reg2, lp_solver, line_sea
         return G, log
     else:
         return G
+    
+def cg_MERFISH(a, b, M1, M2, reg, f, df, gamma, G0=None, line_search=line_search_armijo,
+       numItermax=6000, numItermaxEmd=100000, stopThr=1e-9, stopThr2=1e-9,
+       verbose=False, log=False, **kwargs):
+    r"""
+    Solve the general regularized OT problem with conditional gradient
+
+        The function solves the following optimization problem:
+
+    .. math::
+        \gamma = \mathop{\arg \min}_\gamma \quad \langle \gamma, \mathbf{M} \rangle_F +
+        \mathrm{reg} \cdot f(\gamma)
+
+        s.t. \ \gamma \mathbf{1} &= \mathbf{a}
+
+             \gamma^T \mathbf{1} &= \mathbf{b}
+
+             \gamma &\geq 0
+
+    where :
+
+    - :math:`\mathbf{M}` is the (`ns`, `nt`) metric cost matrix
+    - :math:`f` is the regularization term (and `df` is its gradient)
+    - :math:`\mathbf{a}` and :math:`\mathbf{b}` are source and target weights (sum to 1)
+
+    The algorithm used for solving the problem is conditional gradient as discussed in :ref:`[1] <references-cg>`
+
+
+    Parameters
+    ----------
+    # a : array-like, shape (ns,)
+    #     samples weights in the source domain
+    # b : array-like, shape (nt,)
+    #     samples in the target domain
+
+    # a: initial distribution(uniform) of sliceA spots
+    # b: initial distribution(uniform) of sliceB spots
+    
+    # M : array-like, shape (ns, nt)
+    #     loss matrix
+
+    # M1: cosine dist of gene expression matrices of two slices
+    # M2: jensenshannon dist of niche of two slices
+
+    
+    reg : float
+        Regularization term >0
+    G0 :  array-like, shape (ns,nt), optional
+        initial guess (default is indep joint density)
+    line_search: function,
+        Function to find the optimal step.
+        Default is line_search_armijo.
+    numItermax : int, optional
+        Max number of iterations
+    numItermaxEmd : int, optional
+        Max number of iterations for emd
+    stopThr : float, optional
+        Stop threshold on the relative variation (>0)
+    stopThr2 : float, optional
+        Stop threshold on the absolute variation (>0)
+    verbose : bool, optional
+        Print information along iterations
+    log : bool, optional
+        record log if True
+    **kwargs : dict
+             Parameters for linesearch
+
+    Returns
+    -------
+    gamma : (ns x nt) ndarray
+        Optimal transportation matrix for the given parameters
+    log : dict
+        log dictionary return only if log==True in parameters
+
+
+    .. _references-cg:
+    References
+    ----------
+
+    .. [1] Ferradans, S., Papadakis, N., Peyré, G., & Aujol, J. F. (2014). Regularized discrete optimal transport. SIAM Journal on Imaging Sciences, 7(3), 1853-1882.
+
+    See Also
+    --------
+    ot.lp.emd : Unregularized optimal transport
+    ot.bregman.sinkhorn : Entropic regularized optimal transport
+
+    """
+
+    def lp_solver(a, b, M, **kwargs):
+        return emd(a, b, M, numItermaxEmd, log=True)
+
+    return generic_conditional_gradient_MERFISH(a, b, M1, M2, f, df, reg, None, lp_solver, line_search, G0=G0,
+                                                gamma = gamma,
+                                        numItermax=numItermax, stopThr=stopThr,
+                                        stopThr2=stopThr2, verbose=verbose, log=log, **kwargs)
+
 
 
 def cg(a, b, M, reg, f, df, G0=None, line_search=line_search_armijo,
@@ -400,6 +734,7 @@ def cg(a, b, M, reg, f, df, G0=None, line_search=line_search_armijo,
     return generic_conditional_gradient(a, b, M, f, df, reg, None, lp_solver, line_search, G0=G0,
                                         numItermax=numItermax, stopThr=stopThr,
                                         stopThr2=stopThr2, verbose=verbose, log=log, **kwargs)
+
 
 
 def semirelaxed_cg(a, b, M, reg, f, df, G0=None, line_search=line_search_armijo,

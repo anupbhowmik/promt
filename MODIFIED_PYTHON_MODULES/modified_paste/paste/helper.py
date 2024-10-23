@@ -366,8 +366,7 @@ def get_niche_distribution(curr_slice, radius):
         niche_distribution: Niche distribution for the slice.
     """
 
-    print ("radius", radius)
-    print("radius print done")
+    # print ("radius", radius)
 
     unique_cell_types = np.array(list(curr_slice.obs['cell_type_annot'].unique()))
     cell_type_to_index = dict(zip(unique_cell_types, list(range(len(unique_cell_types)))))

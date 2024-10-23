@@ -15,8 +15,7 @@ from .helper import get_niche_distribution, jensenshannon_divergence_backend, in
 
 
 def cosine_dist_calculator(sliceA, sliceB, sliceA_name, sliceB_name, filePath, use_rep = None, use_gpu = False, nx = ot.backend.NumpyBackend(), beta = 0.8, overwrite = False):
-
-    print ("beta: ", beta)
+    from sklearn.metrics.pairwise import cosine_distances
 
     A_X, B_X = nx.from_numpy(to_dense_array(extract_data_matrix(sliceA,use_rep))), nx.from_numpy(to_dense_array(extract_data_matrix(sliceB,use_rep)))
     # A_X = adata.X (gene expression matrix) of sliceA
@@ -60,7 +59,6 @@ def cosine_dist_calculator(sliceA, sliceB, sliceA_name, sliceB_name, filePath, u
     else:
         print("CUDA is not available on your system.")
 
-
     
     fileName = f"{filePath}/cosine_dist_gene_expr_{sliceA_name}_{sliceB_name}.npy"
     
@@ -71,13 +69,15 @@ def cosine_dist_calculator(sliceA, sliceB, sliceA_name, sliceB_name, filePath, u
         print("Calculating cosine dist of gene expression for slice A and slice B")
         # js_dist_gene_expr = jensenshannon_divergence_backend(s_A, s_B)
 
-        # cosine distance
-        cosine_dist_gene_expr = 1 - (s_A @ s_B.T) / s_A.norm(dim=1)[:, None] / s_B.norm(dim=1)[None, :]
+        # calculate cosine distance manually
+        # cosine_dist_gene_expr = 1 - (s_A @ s_B.T) / s_A.norm(dim=1)[:, None] / s_B.norm(dim=1)[None, :]
+        # cosine_dist_gene_expr = cosine_dist_gene_expr.cpu().detach().numpy()
 
-        cosine_dist_gene_expr = cosine_dist_gene_expr.cpu().detach().numpy()
+        # use sklearn's cosine_distances
+        cosine_dist_gene_expr = cosine_distances(s_A, s_B)
 
-        print("Saving precomputed cosine dist of gene expression for slice A and slice B")
-        np.save(fileName, cosine_dist_gene_expr)
+        # print("Saving precomputed cosine dist of gene expression for slice A and slice B")
+        # np.save(fileName, cosine_dist_gene_expr)
 
     return cosine_dist_gene_expr
 
@@ -143,6 +143,9 @@ def pairwise_align_MERFISH(
     """
 
     start_time = time.time()
+
+    if not os.path.exists(filePath):
+        os.makedirs(filePath)
 
     logFile = open(f"{filePath}/log.txt", "w")
 
@@ -237,26 +240,26 @@ def pairwise_align_MERFISH(
         print("Loading precomputed niche distribution of slice A")
         niche_distribution_sliceA = np.load(f"{filePath}/niche_distribution_{sliceA_name}.npy")
     else:
-        print("Calculating niche distribution of slice A")
+        print("Calculating neighborhood distribution of slice A")
         niche_distribution_sliceA = get_niche_distribution(sliceA, radius = radius)
 
 
-        print("Saving niche distribution of slice A")
         niche_distribution_sliceA += 0.01 # for avoiding zero division error
-        np.save(f"{filePath}/niche_distribution_{sliceA_name}.npy", niche_distribution_sliceA)
+        # print("Saving niche distribution of slice A")
+        # np.save(f"{filePath}/niche_distribution_{sliceA_name}.npy", niche_distribution_sliceA)
 
 
     if os.path.exists(f"{filePath}/niche_distribution_{sliceB_name}.npy") and not overwrite:
         print("Loading precomputed niche distribution of slice B")
         niche_distribution_sliceB = np.load(f"{filePath}/niche_distribution_{sliceB_name}.npy")
     else:
-        print("Calculating niche distribution of slice B")
+        print("Calculating neighborhood distribution of slice B")
         niche_distribution_sliceB = get_niche_distribution(sliceB, radius = radius)
 
 
-        print("Saving niche distribution of slice B")
         niche_distribution_sliceB += 0.01 # for avoiding zero division error
-        np.save(f"{filePath}/niche_distribution_{sliceB_name}.npy", niche_distribution_sliceB)
+        # print("Saving niche distribution of slice B")
+        # np.save(f"{filePath}/niche_distribution_{sliceB_name}.npy", niche_distribution_sliceB)
 
 
     if ('numpy' in str(type(niche_distribution_sliceA))) and use_gpu:
@@ -274,21 +277,20 @@ def pairwise_align_MERFISH(
             js_dist_niche = np.load(f"{filePath}/js_dist_niche_{sliceA_name}_{sliceB_name}.npy")
             
         else:
-            print("Calculating JSD of niche distribution for slice A and slice B")
+            print("Calculating JSD of neighborhood distribution for slice A and slice B")
 
             js_dist_niche = jensenshannon_divergence_backend(niche_distribution_sliceA, niche_distribution_sliceB)
 
             if ('torch' in str(type(js_dist_niche))):
                 js_dist_niche = js_dist_niche.numpy()
 
-            print("Saving precomputed JSD of niche distribution for slice A and slice B")
-            np.save(f"{filePath}/js_dist_niche_{sliceA_name}_{sliceB_name}.npy", js_dist_niche)
+            # print("Saving precomputed JSD of niche distribution for slice A and slice B")
+            # np.save(f"{filePath}/js_dist_niche_{sliceA_name}_{sliceB_name}.npy", js_dist_niche)
   
         M2 = nx.from_numpy(js_dist_niche)
 
     elif neighborhood_dissimilarity == 'cosine':
         cosine_dist_neighborhood = 1 - (niche_distribution_sliceA @ niche_distribution_sliceB.T) / niche_distribution_sliceA.norm(dim=1)[:, None] / niche_distribution_sliceB.norm(dim=1)[None, :]
-        print("type of cosine_dist_neighborhood: ", type(cosine_dist_neighborhood))
         # if ('torch' in str(type(cosine_dist_neighborhood))):
         #     cosine_dist_neighborhood = cosine_dist_neighborhood.numpy()
         if isinstance(cosine_dist_neighborhood, torch.Tensor):
@@ -343,14 +345,14 @@ def pairwise_align_MERFISH(
     initial_obj_gene_cos = np.sum(cosine_dist_gene_expr*G)
 
     if neighborhood_dissimilarity == 'jsd':
-        print(f"Initial objective neighbor (jsd): {initial_obj_neighbor_jsd}")
+        # print(f"Initial objective neighbor (jsd): {initial_obj_neighbor_jsd}")
         logFile.write(f"Initial objective neighbor (jsd): {initial_obj_neighbor_jsd}\n")
 
     elif neighborhood_dissimilarity == 'cosine':
-        print(f"Initial objective neighbor (cosine_dist): {initial_obj_neighbor_cos}")
+        # print(f"Initial objective neighbor (cosine_dist): {initial_obj_neighbor_cos}")
         logFile.write(f"Initial objective neighbor (cosine_dist): {initial_obj_neighbor_cos}\n")
 
-    print(f"Initial objective gene expr (cosine_dist): {initial_obj_gene_cos}")
+    # print(f"Initial objective gene expr (cosine_dist): {initial_obj_gene_cos}")
     logFile.write(f"Initial objective (cosine_dist): {initial_obj_gene_cos}\n")
     
 
@@ -383,17 +385,17 @@ def pairwise_align_MERFISH(
 
     if neighborhood_dissimilarity == 'jsd':
         logFile.write(f"Final objective neighbor (jsd): {obj_neighbor_jsd}\n")
-        print(f"Final objective neighbor (jsd): {obj_neighbor_jsd}\n")
+        # print(f"Final objective neighbor (jsd): {obj_neighbor_jsd}\n")
     elif neighborhood_dissimilarity == 'cosine':
         logFile.write(f"Final objective neighbor (cosine_dist): {obj_neighbor_cos}\n")
-        print(f"Final objective neighbor (cosine_dist): {obj_neighbor_cos}\n")
+        # print(f"Final objective neighbor (cosine_dist): {obj_neighbor_cos}\n")
 
     logFile.write(f"Final objective gene expr(cosine_dist): {obj_gene_cos}\n")
-    print(f"Final objective (cosine_dist): {obj_gene_cos}\n")
+    # print(f"Final objective (cosine_dist): {obj_gene_cos}\n")
     
 
     logFile.write(f"Runtime: {str(time.time() - start_time)} seconds\n")
-    print(f"Runtime: {str(time.time() - start_time)} seconds\n")
+    # print(f"Runtime: {str(time.time() - start_time)} seconds\n")
     logFile.write(f"---------------------------------------------\n\n\n")
 
     logFile.close()
@@ -619,9 +621,9 @@ def pairwise_align(
         niche_distribution_sliceA = get_niche_distribution(new_slices[0], radius = radius)
 
 
-        print("Saving post_niche distribution of slice A")
         niche_distribution_sliceA += 0.01 # for avoiding zero division error
-        np.save(f"{filePath}/post_niche_distribution_{sliceA_name}.npy", niche_distribution_sliceA)
+        # print("Saving post_niche distribution of slice A")
+        # np.save(f"{filePath}/post_niche_distribution_{sliceA_name}.npy", niche_distribution_sliceA)
 
     if os.path.exists(f"{filePath}/post_niche_distribution_{sliceB_name}.npy") and not overwrite:
         print("Loading precomputed post_niche distribution of slice B")
@@ -631,9 +633,9 @@ def pairwise_align(
         niche_distribution_sliceB = get_niche_distribution(new_slices[1], radius = radius)
 
 
-        print("Saving post_niche distribution of slice B")
         niche_distribution_sliceB += 0.01 # for avoiding zero division error
-        np.save(f"{filePath}/post_niche_distribution_{sliceB_name}.npy", niche_distribution_sliceB)
+        # print("Saving post_niche distribution of slice B")
+        # np.save(f"{filePath}/post_niche_distribution_{sliceB_name}.npy", niche_distribution_sliceB)
 
 
     if os.path.exists(f"{filePath}/post_js_dist_niche_{sliceA_name}_{sliceB_name}.npy") and not overwrite:
@@ -648,8 +650,8 @@ def pairwise_align(
             js_dist_niche = js_dist_niche.numpy()
 
 
-        print("Saving precomputed JSD of niche distribution for post_slice A and post_slice B")
-        np.save(f"{filePath}/post_js_dist_niche_{sliceA_name}_{sliceB_name}.npy", js_dist_niche)
+        # print("Saving precomputed JSD of niche distribution for post_slice A and post_slice B")
+        # np.save(f"{filePath}/post_js_dist_niche_{sliceA_name}_{sliceB_name}.npy", js_dist_niche)
 
     # added by Anup Bhowmik
 
