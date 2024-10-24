@@ -18,7 +18,14 @@ The code is tested on ubuntu 20.04 with python `3.10`. It is recommended to use 
 
 ### Library Dependencies
 
-- Scipy `1.11.3`
+- scipy `1.11.3`
+- anndata `0.10.9`
+- matplotlib `3.9.2`
+- numpy `1.26.4`
+- pandas `2.2.3`
+- scanpy `1.10.3`
+- scikit-learn `1.5.2`
+- torch `2.5.0`
 
 ### How to reproduce the results
 
