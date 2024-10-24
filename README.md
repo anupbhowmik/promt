@@ -14,7 +14,13 @@ https://cellxgene.cziscience.com/collections/31937775-0602-4e52-a799-b6acdd2bac2
 
 ### Environment setup
 
-The code is tested on ubuntu 20.04 with python 3.10.15. It is recommended to use a virtual environment to run the code.
+The code is tested on ubuntu 20.04 with python `3.10`. It is recommended to use a virtual environment to run the code.
+
+### Library Dependencies
+
+- Scipy `1.11.3`
+
+### How to reproduce the results
 
 Tutorial is available at [PROMT_tutorial.ipynb](./PROMT_tutorial.ipynb) in this repository.
 
