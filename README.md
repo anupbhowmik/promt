@@ -10,6 +10,9 @@ This work was forked from [paste](https://github.com/raphael-group/paste) reposi
 
 https://cellxgene.cziscience.com/collections/31937775-0602-4e52-a799-b6acdd2bac2e
 
+Splitted data is available at
+[zenodo](https://zenodo.org/records/13997882).
+
 ## Reproducibility
 
 ### Environment setup
