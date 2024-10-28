@@ -8,16 +8,16 @@ This work was forked from [paste](https://github.com/raphael-group/paste) reposi
 
 ## Data Availability
 
-https://cellxgene.cziscience.com/collections/31937775-0602-4e52-a799-b6acdd2bac2e
+Datasets are collected from [cellxgene](https://cellxgene.cziscience.com/collections/31937775-0602-4e52-a799-b6acdd2bac2e).
 
-Splitted data is available at
+All preprocessed datasets are available on
 [zenodo](https://zenodo.org/records/13997882).
 
 ## Reproducibility
 
 ### Environment setup
 
-The code is tested on ubuntu 20.04 with python `3.10`. It is recommended to use a virtual environment to run the code.
+The code is tested on ubuntu 20.04 with python `3.10`. It is recommended to use a python virtual environment to run the code.
 
 ### Library Dependencies
 
