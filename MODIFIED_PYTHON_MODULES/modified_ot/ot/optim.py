@@ -244,11 +244,6 @@ def generic_conditional_gradient_MERFISH(a, b, M1, M2, f, df, reg1, reg2, lp_sol
     ot.bregman.sinkhorn : Entropic regularized optimal transport
     """
 
-    print("gamma:", gamma)
-    print("numItermax:", numItermax)
- 
-
-
     # new code starts
     a, b, M1, M2, G0 = list_to_array(a, b, M1, M2, G0)
     if isinstance(M1, int) or isinstance(M1, float):

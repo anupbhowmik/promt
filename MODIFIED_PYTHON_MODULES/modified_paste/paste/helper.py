@@ -297,64 +297,8 @@ def apply_trsf(
     return ((trsf @ flo_pad)[:-1]).T
 
 
-
-def get_niche_distribution_old(curr_slice, radius):
-    """
-    This method is added by Anup Bhowmik
-    Args:
-        curr_slice: Slice to get niche distribution for.
-        pairwise_distances: Pairwise distances between cells of a slice.
-        radius: Radius of the niche.
-
-    Returns:
-        niche_distribution: Niche distribution for the slice.
-    """
-    print("old ")
-    print ("radius", radius)
-    xy = curr_slice.obsm['spatial']
-    tree = KDTree(xy, leaf_size=2)
-
-    time_kd_start = time.time()
-    tree = KDTree(xy, leaf_size=2, metric='euclidean')
-    dist, ind = tree.query(xy, k=50)
-    time_kd_end = time.time()
-    # print("time taken for kd tree", time_kd_end-time_kd_start)
-
-    time_cell_type_start = time.time()
-    unique_cell_types = np.array(list(curr_slice.obs['cell_type_annot'].unique()))
-    cell_type_to_index = dict(zip(unique_cell_types, list(range(len(unique_cell_types)))))
-    cells_within_radius = np.zeros((curr_slice.shape[0], len(unique_cell_types)), dtype=float)
-    time_cell_type_end = time.time()
-    # print("time taken for cell type", time_cell_type_end-time_cell_type_start)
-
-
-    for i in tqdm(range(curr_slice.shape[0])):
-        # find the indices of the cells within the radius
-        
-        for j in range(len(ind[i])):
-            
-            if dist[i][j] <= radius:
-               
-                start1 = time.time()
-                cell_type_str_j = str(curr_slice.obs['cell_type_annot'].values[ind[i][j]])
-                cell_type_str_i = str(curr_slice.obs['cell_type_annot'].values[i])
-                end1 = time.time()
-
-
-                cells_within_radius[i][cell_type_to_index[cell_type_str_j]] += 1
-                cells_within_radius[j][cell_type_to_index[cell_type_str_i]] += 1
-                end = time.time()
-
-                # print("time taken for cell type", end1-start1)
-                # print("time taken for adding", end-end1)
-                # print("=========================================")
-
-
-    return np.array(cells_within_radius)
-
-
 from sklearn.metrics.pairwise import euclidean_distances
-def get_niche_distribution(curr_slice, radius):
+def get_neighborhood_distribution(curr_slice, radius):
     """
     This method is added by Anup Bhowmik
     Args:

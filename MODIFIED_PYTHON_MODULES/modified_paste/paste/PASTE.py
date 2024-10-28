@@ -11,7 +11,7 @@ import pandas as pd
 from .visualization import stack_slices_pairwise
 import os
 from sklearn.decomposition import NMF
-from .helper import get_niche_distribution, jensenshannon_divergence_backend, intersect, kl_divergence_backend, to_dense_array, extract_data_matrix
+from .helper import get_neighborhood_distribution, jensenshannon_divergence_backend, intersect, kl_divergence_backend, to_dense_array, extract_data_matrix
 
 
 def cosine_dist_calculator(sliceA, sliceB, sliceA_name, sliceB_name, filePath, use_rep = None, use_gpu = False, nx = ot.backend.NumpyBackend(), beta = 0.8, overwrite = False):
@@ -233,63 +233,63 @@ def pairwise_align_MERFISH(
 
 
     # jensenshannon_divergence_backend actually returns jensen shannon distance
-    # niche_distribution_slice_1, niche_distribution_slice_1 will be pre computed
+    # neighborhood_distribution_slice_1, neighborhood_distribution_slice_1 will be pre computed
 
-    if os.path.exists(f"{filePath}/niche_distribution_{sliceA_name}.npy") and not overwrite:
-        print("Loading precomputed niche distribution of slice A")
-        niche_distribution_sliceA = np.load(f"{filePath}/niche_distribution_{sliceA_name}.npy")
+    if os.path.exists(f"{filePath}/neighborhood_distribution_{sliceA_name}.npy") and not overwrite:
+        print("Loading precomputed neighborhood distribution of slice A")
+        neighborhood_distribution_sliceA = np.load(f"{filePath}/neighborhood_distribution_{sliceA_name}.npy")
     else:
         print("Calculating neighborhood distribution of slice A")
-        niche_distribution_sliceA = get_niche_distribution(sliceA, radius = radius)
+        neighborhood_distribution_sliceA = get_neighborhood_distribution(sliceA, radius = radius)
 
 
-        niche_distribution_sliceA += 0.01 # for avoiding zero division error
-        # print("Saving niche distribution of slice A")
-        # np.save(f"{filePath}/niche_distribution_{sliceA_name}.npy", niche_distribution_sliceA)
+        neighborhood_distribution_sliceA += 0.01 # for avoiding zero division error
+        # print("Saving neighborhood distribution of slice A")
+        # np.save(f"{filePath}/neighborhood_distribution_{sliceA_name}.npy", neighborhood_distribution_sliceA)
 
 
-    if os.path.exists(f"{filePath}/niche_distribution_{sliceB_name}.npy") and not overwrite:
-        print("Loading precomputed niche distribution of slice B")
-        niche_distribution_sliceB = np.load(f"{filePath}/niche_distribution_{sliceB_name}.npy")
+    if os.path.exists(f"{filePath}/neighborhood_distribution_{sliceB_name}.npy") and not overwrite:
+        print("Loading precomputed neighborhood distribution of slice B")
+        neighborhood_distribution_sliceB = np.load(f"{filePath}/neighborhood_distribution_{sliceB_name}.npy")
     else:
         print("Calculating neighborhood distribution of slice B")
-        niche_distribution_sliceB = get_niche_distribution(sliceB, radius = radius)
+        neighborhood_distribution_sliceB = get_neighborhood_distribution(sliceB, radius = radius)
 
 
-        niche_distribution_sliceB += 0.01 # for avoiding zero division error
-        # print("Saving niche distribution of slice B")
-        # np.save(f"{filePath}/niche_distribution_{sliceB_name}.npy", niche_distribution_sliceB)
+        neighborhood_distribution_sliceB += 0.01 # for avoiding zero division error
+        # print("Saving neighborhood distribution of slice B")
+        # np.save(f"{filePath}/neighborhood_distribution_{sliceB_name}.npy", neighborhood_distribution_sliceB)
 
 
-    if ('numpy' in str(type(niche_distribution_sliceA))) and use_gpu:
-        niche_distribution_sliceA = torch.from_numpy(niche_distribution_sliceA)
-    if ('numpy' in str(type(niche_distribution_sliceB))) and use_gpu:
-        niche_distribution_sliceB = torch.from_numpy(niche_distribution_sliceB)
+    if ('numpy' in str(type(neighborhood_distribution_sliceA))) and use_gpu:
+        neighborhood_distribution_sliceA = torch.from_numpy(neighborhood_distribution_sliceA)
+    if ('numpy' in str(type(neighborhood_distribution_sliceB))) and use_gpu:
+        neighborhood_distribution_sliceB = torch.from_numpy(neighborhood_distribution_sliceB)
 
     if use_gpu:
-        niche_distribution_sliceA = niche_distribution_sliceA.cuda()
-        niche_distribution_sliceB = niche_distribution_sliceB.cuda()
+        neighborhood_distribution_sliceA = neighborhood_distribution_sliceA.cuda()
+        neighborhood_distribution_sliceB = neighborhood_distribution_sliceB.cuda()
 
     if neighborhood_dissimilarity == 'jsd':
-        if os.path.exists(f"{filePath}/js_dist_niche_{sliceA_name}_{sliceB_name}.npy") and not overwrite:
-            print("Loading precomputed JSD of niche distribution for slice A and slice B")
-            js_dist_niche = np.load(f"{filePath}/js_dist_niche_{sliceA_name}_{sliceB_name}.npy")
+        if os.path.exists(f"{filePath}/js_dist_neighborhood_{sliceA_name}_{sliceB_name}.npy") and not overwrite:
+            print("Loading precomputed JSD of neighborhood distribution for slice A and slice B")
+            js_dist_neighborhood = np.load(f"{filePath}/js_dist_neighborhood_{sliceA_name}_{sliceB_name}.npy")
             
         else:
             print("Calculating JSD of neighborhood distribution for slice A and slice B")
 
-            js_dist_niche = jensenshannon_divergence_backend(niche_distribution_sliceA, niche_distribution_sliceB)
+            js_dist_neighborhood = jensenshannon_divergence_backend(neighborhood_distribution_sliceA, neighborhood_distribution_sliceB)
 
-            if ('torch' in str(type(js_dist_niche))):
-                js_dist_niche = js_dist_niche.numpy()
+            if ('torch' in str(type(js_dist_neighborhood))):
+                js_dist_neighborhood = js_dist_neighborhood.numpy()
 
-            # print("Saving precomputed JSD of niche distribution for slice A and slice B")
-            # np.save(f"{filePath}/js_dist_niche_{sliceA_name}_{sliceB_name}.npy", js_dist_niche)
+            # print("Saving precomputed JSD of neighborhood distribution for slice A and slice B")
+            # np.save(f"{filePath}/js_dist_neighborhood_{sliceA_name}_{sliceB_name}.npy", js_dist_neighborhood)
   
-        M2 = nx.from_numpy(js_dist_niche)
+        M2 = nx.from_numpy(js_dist_neighborhood)
 
     elif neighborhood_dissimilarity == 'cosine':
-        cosine_dist_neighborhood = 1 - (niche_distribution_sliceA @ niche_distribution_sliceB.T) / niche_distribution_sliceA.norm(dim=1)[:, None] / niche_distribution_sliceB.norm(dim=1)[None, :]
+        cosine_dist_neighborhood = 1 - (neighborhood_distribution_sliceA @ neighborhood_distribution_sliceB.T) / neighborhood_distribution_sliceA.norm(dim=1)[:, None] / neighborhood_distribution_sliceB.norm(dim=1)[None, :]
         # if ('torch' in str(type(cosine_dist_neighborhood))):
         #     cosine_dist_neighborhood = cosine_dist_neighborhood.numpy()
         if isinstance(cosine_dist_neighborhood, torch.Tensor):
@@ -337,7 +337,7 @@ def pairwise_align_MERFISH(
     G = np.ones((a.shape[0], b.shape[0])) / (a.shape[0] * b.shape[0])
 
     if neighborhood_dissimilarity == 'jsd':
-        initial_obj_neighbor_jsd = np.sum(js_dist_niche*G)
+        initial_obj_neighbor_jsd = np.sum(js_dist_neighborhood*G)
     elif neighborhood_dissimilarity == 'cosine':
         initial_obj_neighbor_cos = np.sum(cosine_dist_neighborhood*G)
 
@@ -366,7 +366,7 @@ def pairwise_align_MERFISH(
         # multiply each value of max_indices from pi_mat with the corresponding js_dist entry
         jsd_error = np.zeros(max_indices.shape)
         for i in range(len(max_indices)):
-            jsd_error[i] = pi[i][max_indices[i]] * js_dist_niche[i][max_indices[i]]
+            jsd_error[i] = pi[i][max_indices[i]] * js_dist_neighborhood[i][max_indices[i]]
 
         obj_neighbor_jsd = np.sum(jsd_error)
 
@@ -612,51 +612,51 @@ def pairwise_align(
     # use jsd as dissimilarity measure (objective function) 
     
     # check if the file already exists
-    if os.path.exists(f"{filePath}/post_niche_distribution_{sliceA_name}.npy") and not overwrite:
-        print("Loading precomputed post_niche distribution of slice A")
-        niche_distribution_sliceA = np.load(f"{filePath}/post_niche_distribution_{sliceA_name}.npy")
+    if os.path.exists(f"{filePath}/post_neighborhood_distribution_{sliceA_name}.npy") and not overwrite:
+        print("Loading precomputed post_neighborhood distribution of slice A")
+        neighborhood_distribution_sliceA = np.load(f"{filePath}/post_neighborhood_distribution_{sliceA_name}.npy")
     else:
-        print("Calculating post_niche distribution of slice A")
-        niche_distribution_sliceA = get_niche_distribution(new_slices[0], radius = radius)
+        print("Calculating post_neighborhood distribution of slice A")
+        neighborhood_distribution_sliceA = get_neighborhood_distribution(new_slices[0], radius = radius)
 
 
-        niche_distribution_sliceA += 0.01 # for avoiding zero division error
-        # print("Saving post_niche distribution of slice A")
-        # np.save(f"{filePath}/post_niche_distribution_{sliceA_name}.npy", niche_distribution_sliceA)
+        neighborhood_distribution_sliceA += 0.01 # for avoiding zero division error
+        # print("Saving post_neighborhood distribution of slice A")
+        # np.save(f"{filePath}/post_neighborhood_distribution_{sliceA_name}.npy", neighborhood_distribution_sliceA)
 
-    if os.path.exists(f"{filePath}/post_niche_distribution_{sliceB_name}.npy") and not overwrite:
-        print("Loading precomputed post_niche distribution of slice B")
-        niche_distribution_sliceB = np.load(f"{filePath}/post_niche_distribution_{sliceB_name}.npy")
+    if os.path.exists(f"{filePath}/post_neighborhood_distribution_{sliceB_name}.npy") and not overwrite:
+        print("Loading precomputed post_neighborhood distribution of slice B")
+        neighborhood_distribution_sliceB = np.load(f"{filePath}/post_neighborhood_distribution_{sliceB_name}.npy")
     else:
-        print("Calculating post_niche distribution of slice B")
-        niche_distribution_sliceB = get_niche_distribution(new_slices[1], radius = radius)
+        print("Calculating post_neighborhood distribution of slice B")
+        neighborhood_distribution_sliceB = get_neighborhood_distribution(new_slices[1], radius = radius)
 
 
-        niche_distribution_sliceB += 0.01 # for avoiding zero division error
-        # print("Saving post_niche distribution of slice B")
-        # np.save(f"{filePath}/post_niche_distribution_{sliceB_name}.npy", niche_distribution_sliceB)
+        neighborhood_distribution_sliceB += 0.01 # for avoiding zero division error
+        # print("Saving post_neighborhood distribution of slice B")
+        # np.save(f"{filePath}/post_neighborhood_distribution_{sliceB_name}.npy", neighborhood_distribution_sliceB)
 
 
-    if os.path.exists(f"{filePath}/post_js_dist_niche_{sliceA_name}_{sliceB_name}.npy") and not overwrite:
-        print("Loading precomputed JSD of niche distribution for post_slice A and post_slice B")
-        js_dist_niche = np.load(f"{filePath}/post_js_dist_niche_{sliceA_name}_{sliceB_name}.npy")
+    if os.path.exists(f"{filePath}/post_js_dist_neighborhood_{sliceA_name}_{sliceB_name}.npy") and not overwrite:
+        print("Loading precomputed JSD of neighborhood distribution for post_slice A and post_slice B")
+        js_dist_neighborhood = np.load(f"{filePath}/post_js_dist_neighborhood_{sliceA_name}_{sliceB_name}.npy")
     else:
-        print("Calculating JSD of niche distribution for post_slice A and post_slice B")
-        js_dist_niche = jensenshannon_divergence_backend(niche_distribution_sliceA, niche_distribution_sliceB)
+        print("Calculating JSD of neighborhood distribution for post_slice A and post_slice B")
+        js_dist_neighborhood = jensenshannon_divergence_backend(neighborhood_distribution_sliceA, neighborhood_distribution_sliceB)
         
-        if ('torch' in str(type(js_dist_niche))):
-            print('torch in js_dist_niche')
-            js_dist_niche = js_dist_niche.numpy()
+        if ('torch' in str(type(js_dist_neighborhood))):
+            print('torch in js_dist_neighborhood')
+            js_dist_neighborhood = js_dist_neighborhood.numpy()
 
 
-        # print("Saving precomputed JSD of niche distribution for post_slice A and post_slice B")
-        # np.save(f"{filePath}/post_js_dist_niche_{sliceA_name}_{sliceB_name}.npy", js_dist_niche)
+        # print("Saving precomputed JSD of neighborhood distribution for post_slice A and post_slice B")
+        # np.save(f"{filePath}/post_js_dist_neighborhood_{sliceA_name}_{sliceB_name}.npy", js_dist_neighborhood)
 
     # added by Anup Bhowmik
 
     G = np.ones((a.shape[0], b.shape[0])) / (a.shape[0] * b.shape[0])
 
-    initial_obj_neighbor_jsd = np.sum(js_dist_niche*G)
+    initial_obj_neighbor_jsd = np.sum(js_dist_neighborhood*G)
     
     cosine_dist_gene_expr = cosine_dist_calculator(new_slices[0], new_slices[1], sliceA_name, sliceB_name, filePath, use_rep = use_rep, use_gpu = use_gpu, nx = nx, beta = beta, overwrite = overwrite)
     initial_obj_gene_cos = np.sum(cosine_dist_gene_expr*G)
@@ -666,7 +666,7 @@ def pairwise_align(
     print(f"Initial objective (cosine_dist): {initial_obj_gene_cos}")
     logFile.write(f"Initial objective (cosine_dist): {initial_obj_gene_cos}\n")
 
-    obj_neighbor_jsd = np.sum(js_dist_niche * pi)
+    obj_neighbor_jsd = np.sum(js_dist_neighborhood * pi)
 
     obj_gene_cos = np.sum(cosine_dist_gene_expr * pi)
 
@@ -860,7 +860,7 @@ def my_fused_gromov_wasserstein_MERFISH(M1, M2, C1, C2, p, q, gamma, G_init = No
     For more info, see: https://pythonot.github.io/gen_modules/ot.gromov.html
 
     # M1: cosine dist of gene expression matrices of two slices
-    # M2: jensenshannon dist of niche of two slices
+    # M2: jensenshannon dist of neighborhood of two slices
 
     # p: initial distribution(uniform) of sliceA spots
     # q: initial distribution(uniform) of sliceB spots
@@ -882,13 +882,6 @@ def my_fused_gromov_wasserstein_MERFISH(M1, M2, C1, C2, p, q, gamma, G_init = No
     # **kwargs: additional arguments for ot.gromov.fgw
 
     """
-
-    print("alpha:", alpha)
-    print("beta:", beta)
-
-
-
-    
 
     p, q = ot.utils.list_to_array(p, q)
 
