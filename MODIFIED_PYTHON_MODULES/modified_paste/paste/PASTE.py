@@ -55,7 +55,7 @@ def cosine_dist_calculator(sliceA, sliceB, sliceA_name, sliceB_name, filePath, u
         print("CUDA is available on your system.")
         s_A = s_A.to('cuda')
         s_B = s_B.to('cuda')
-        # print(s_A)
+
     else:
         print("CUDA is not available on your system.")
 
@@ -67,7 +67,6 @@ def cosine_dist_calculator(sliceA, sliceB, sliceA_name, sliceB_name, filePath, u
         cosine_dist_gene_expr = np.load(fileName)
     else:
         print("Calculating cosine dist of gene expression for slice A and slice B")
-        # js_dist_gene_expr = jensenshannon_divergence_backend(s_A, s_B)
 
         # calculate cosine distance manually
         # cosine_dist_gene_expr = 1 - (s_A @ s_B.T) / s_A.norm(dim=1)[:, None] / s_B.norm(dim=1)[None, :]
@@ -76,8 +75,8 @@ def cosine_dist_calculator(sliceA, sliceB, sliceA_name, sliceB_name, filePath, u
         # use sklearn's cosine_distances
         cosine_dist_gene_expr = cosine_distances(s_A, s_B)
 
-        # print("Saving precomputed cosine dist of gene expression for slice A and slice B")
-        # np.save(fileName, cosine_dist_gene_expr)
+        print("Saving cosine dist of gene expression for slice A and slice B")
+        np.save(fileName, cosine_dist_gene_expr)
 
     return cosine_dist_gene_expr
 
