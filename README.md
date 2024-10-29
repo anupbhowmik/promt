@@ -35,6 +35,12 @@ The code is tested on ubuntu 20.04 with python `3.10`. It is recommended to use 
   pip install --upgrade "git+https://github.com/JEFworks-Lab/STalign.git"
   ```
 
+- spatialde `1.1.3`
+
+  ```bash
+  pip install spatialde
+  ```
+
 ### How to reproduce the results
 
 Tutorial is available at [PROMT_tutorial.ipynb](./PROMT_tutorial.ipynb) in this repository.
