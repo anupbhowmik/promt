@@ -29,6 +29,8 @@ The code is tested on ubuntu 20.04 with python `3.10`. It is recommended to use 
 - scanpy `1.10.3`
 - scikit-learn `1.5.2`
 - torch `2.5.0`
+- mygene `3.2.2`
+- anndata `0.10.9`
 - stalign
 
   ```bash
