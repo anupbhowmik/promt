@@ -45,4 +45,6 @@ The code is tested on ubuntu 20.04 with python `3.10`. It is recommended to use 
 
 ### How to reproduce the results
 
-Tutorial is available at [PROMT_tutorial.ipynb](./PROMT_tutorial.ipynb) in this repository.
+- Create a directory `data/Mouse_brain_MERFISH` and place the preprocessed data files in it.
+
+- Tutorial is available at [PROMT_tutorial.ipynb](./PROMT_tutorial.ipynb) in this repository.
