@@ -43,7 +43,6 @@ def cosine_dist_calculator(sliceA, sliceB, sliceA_name, sliceB_name, filePath, u
     s_A = s_A.cpu().detach().numpy()
     s_B = s_B.cpu().detach().numpy()
 
-
     # Concatenate along a specified axis (0 for rows, 1 for columns)
     s_A = np.concatenate((s_A, beta * one_hot_cell_type_sliceA), axis=1)
     s_B = np.concatenate((s_B, beta * one_hot_cell_type_sliceB), axis=1)
@@ -73,6 +72,9 @@ def cosine_dist_calculator(sliceA, sliceB, sliceA_name, sliceB_name, filePath, u
         # cosine_dist_gene_expr = cosine_dist_gene_expr.cpu().detach().numpy()
 
         # use sklearn's cosine_distances
+        if torch.cuda.is_available():
+            s_A = s_A.cpu().detach().numpy()
+            s_B = s_B.cpu().detach().numpy()
         cosine_dist_gene_expr = cosine_distances(s_A, s_B)
 
         print("Saving cosine dist of gene expression for slice A and slice B")
@@ -185,7 +187,11 @@ def pairwise_align_MERFISH(
     else:
         if gpu_verbose:
             print("Using selected backend cpu. If you want to use gpu, set use_gpu = True.")
-            
+
+    if not torch.cuda.is_available():
+        use_gpu = False
+        print("CUDA is not available on your system. Reverting to CPU.")
+ 
 
     '''
         # subset for common genes

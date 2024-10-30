@@ -43,6 +43,8 @@ The code is tested on ubuntu 20.04 with python `3.10`. It is recommended to use 
   pip install spatialde
   ```
 
+To utilize the GPU, install [PyTorch](https://pytorch.org/) with CUDA support.
+
 ### How to reproduce the results
 
 - Create a directory `data/Mouse_brain_MERFISH` and place the preprocessed data files in it.
