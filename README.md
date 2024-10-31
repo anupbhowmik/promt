@@ -2,9 +2,16 @@
 
 ## Contents
 
+- [Acknowledgements](#acknowledgements)
+- [Data Availability](#data-availability)
+- [Use PROMT](#use-promt)
+  - [Environment setup](#environment-setup)
+  - [Library Dependencies](#library-dependencies)
+- [How to reproduce the results](#how-to-reproduce-the-results)
+
 ## Acknowledgements
 
-This work was forked from [paste](https://github.com/raphael-group/paste) repository.
+Some of the utility functions are taken from [raphael-group/paste](https://github.com/raphael-group/paste) repository.
 
 ## Data Availability
 
@@ -13,7 +20,7 @@ Datasets are collected from [cellxgene](https://cellxgene.cziscience.com/collect
 All preprocessed datasets are available on
 [zenodo](https://zenodo.org/records/13997882).
 
-## Reproducibility
+## Use PROMT
 
 ### Environment setup
 
@@ -45,7 +52,9 @@ The code is tested on ubuntu 20.04 with python `3.10`. It is recommended to use 
 
 To utilize the GPU, install [PyTorch](https://pytorch.org/) with CUDA support.
 
-### How to reproduce the results
+## How to reproduce the results
+
+> Note: This part is not finalized yet. It will be updated as the files are organized and will be finalized in the latest release.
 
 - Create a directory `data/Mouse_brain_MERFISH` and place the preprocessed data files in it.
 
