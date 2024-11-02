@@ -1,21 +1,9 @@
-# %%
-!python --version
 
-# %% [markdown]
-# # ***Packages***
 
-# %%
-# %pip install matplotlib
-# %pip install scanpy
-# %pip install tqdm
-# %pip install torch
-
-# %%
 import matplotlib.pyplot as plt
 import numpy as np
 import scanpy as sc
 
-# %%
 import locale
 import inspect
 import os
@@ -40,17 +28,9 @@ module_directory = os.path.dirname(module_path)
 print(f"Module directory: {module_directory}")
 
 
-# %% [markdown]
-# Check for GPU support
+"""# ***Data***"""
 
-# %%
-!nvidia-smi
-
-# %% [markdown]
-# # ***Data***
-
-# %%
-def load_data(data_dir, data1, data2):    
+def load_data(data_dir, data1, data2):
 
     sliceA = sc.read_h5ad(data_dir + data1 + ".h5ad")
     sliceB = sc.read_h5ad(data_dir + data2 + ".h5ad")
@@ -73,8 +53,6 @@ def load_data(data_dir, data1, data2):
 
     return sliceA, sliceB
 
-
-# %%
 def visualize_alignment(sliceA, sliceB, pi12):
     slices, pis = [sliceA, sliceB], [pi12]
     new_slices = pst.stack_slices_pairwise(slices, pis)
@@ -97,12 +75,8 @@ def visualize_alignment(sliceA, sliceB, pi12):
 
     return new_slices
 
-    
+"""# ***Apply Method***"""
 
-# %% [markdown]
-# # ***Apply Method***
-
-# %%
 def cell_type_matching_metric_stalign(threshold, slice1, slice2):
     from sklearn.metrics.pairwise import euclidean_distances
 
@@ -131,7 +105,7 @@ def cell_type_matching_metric_stalign(threshold, slice1, slice2):
                 matching_cell_types += 1
                 processed_target_cells.add(target_cell_index)
                 break
-    
+
     percentage = matching_cell_types / slice1.n_obs * 100
 
     print(f"Number of matching cell types within {threshold}um distance: {matching_cell_types}")
@@ -139,15 +113,13 @@ def cell_type_matching_metric_stalign(threshold, slice1, slice2):
 
     return matching_cell_types, percentage
 
-
-# %%
 def run_stalign(sliceA, sliceB, data1, data2, dataPath):
     from STalign import STalign
     import torch
     from sklearn.metrics.pairwise import euclidean_distances, cosine_distances
 
     def get_neighborhood_distribution(curr_slice, radius):
- 
+
         unique_cell_types = np.array(list(curr_slice.obs['cell_type_annot'].unique()))
         cell_type_to_index = dict(zip(unique_cell_types, list(range(len(unique_cell_types)))))
         cells_within_radius = np.zeros((curr_slice.shape[0], len(unique_cell_types)), dtype=float)
@@ -165,7 +137,7 @@ def run_stalign(sliceA, sliceB, data1, data2, dataPath):
                 cells_within_radius[i][cell_type_to_index[cell_type_str_j]] += 1
 
         return np.array(cells_within_radius)
-    
+
     def cellular_neighborhood_gene_expr_metric(radius, slice1, slice2):
 
         pi_mat = np.zeros((slice1.shape[0], slice2.shape[0]))
@@ -331,8 +303,6 @@ def run_stalign(sliceA, sliceB, data1, data2, dataPath):
 
     return pi_mat, initial_obj_neighbor, initial_obj_gene_cos, final_obj_neighbor, final_obj_gene_cos, new_slices
 
-
-# %%
 def run_method(sliceA, sliceB, data1, data2, method_name):
 
     if method_name.lower() == 'promt':
@@ -342,10 +312,10 @@ def run_method(sliceA, sliceB, data1, data2, method_name):
                                             sliceA_name=data1, sliceB_name=data2, alpha=0.1, beta= 0.8, gamma=0.8, radius=100,
                                             numItermax = 20000, overwrite = True, neighborhood_dissimilarity = 'jsd',
                                             filePath = f'{os.getcwd()}/local_data/{method_name}')
-        
+
         new_slices = visualize_alignment(sliceA, sliceB, pi12)
         return pi12, initial_obj_neighbor, initial_obj_gene_cos, final_obj_neighbor, final_obj_gene_cos, new_slices
-    
+
     elif method_name.lower() == 'paste':
 
         pi12, initial_obj_neighbor, initial_obj_gene_cos, final_obj_neighbor, final_obj_gene_cos = pst.pairwise_align(sliceA = sliceA, sliceB = sliceB, backend = ot.backend.TorchBackend(),
@@ -359,18 +329,15 @@ def run_method(sliceA, sliceB, data1, data2, method_name):
 
     elif method_name.lower() == 'stalign':
         pi12, initial_obj_neighbor, initial_obj_gene_cos, final_obj_neighbor, final_obj_gene_cos, new_slices = run_stalign(sliceA, sliceB, data1, data2, f'{os.getcwd()}/local_data/{method_name}')
-    
+
     else:
         print("Method not found")
         return None
 
-
-# %%
 def save_pi_matrix(pi12, data1, data2, method_name):
     filePath = f'{os.getcwd()}/local_data/{method_name}'
     np.save(f"{filePath}/pi_matrix_{data1}_{data2}.npy", pi12)
 
-# %%
 def cell_type_matching_metric(sliceA, sliceB, pi_mat):
 
     matching_cell_types = 0
@@ -384,8 +351,6 @@ def cell_type_matching_metric(sliceA, sliceB, pi_mat):
     percentage = matching_cell_types / sliceA.n_obs * 100
     return matching_cell_types, percentage
 
-
-# %%
 def get_perf_metrics(new_slices, pi12, neighbor_initial_obj, initial_obj_gene_cos, neighbor_final_obj, obj_gene_cos, method_name):
     neighborhood_improvement = (neighbor_initial_obj - neighbor_final_obj)/neighbor_initial_obj * 100
     gene_expr_improvement = (initial_obj_gene_cos - obj_gene_cos)/initial_obj_gene_cos * 100
@@ -400,7 +365,6 @@ def get_perf_metrics(new_slices, pi12, neighbor_initial_obj, initial_obj_gene_co
     print(f"Cosine Distance of Gene Expression\nBefore: {initial_obj_gene_cos:.5f}, After: {obj_gene_cos:.5f}, Improvement: {gene_expr_improvement:.5f}%")
     print(f"Cell-type Correspondence: {percentage:.5f}%")
 
-# %%
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -436,46 +400,38 @@ def plot_results():
         plt.xticks(rotation=0)
         plt.show()
 
+import argparse
+def main():
 
+    parser = argparse.ArgumentParser(description="reproduce")
+    parser.add_argument("--method", type=str, required=True,
+                        help="Unique identifier for this run")
+    
+    args = parser.parse_args()
+    method = args.method
 
-# %% [markdown]
-# # ***Reproduce Results***
+    data_dir = f"{os.getcwd()}/data/Mouse_brain_MERFISH/"
+    data1="adata24wk_donor_id_10_slice_1"
+    data2="adata90wk_donor_id_5_slice_1"
 
-# %%
-data_dir = "./data/Mouse_brain_MERFISH/"
-data1="adata24wk_donor_id_10_slice_1"
-data2="adata90wk_donor_id_5_slice_1"
+    sliceA, sliceB = load_data(data_dir, data1, data2)
 
-sliceA, sliceB = load_data(data_dir, data1, data2)
-
-# %%
-
-# methods = ['promt', 'paste', 'stalign']
-methods = ['promt']
-
-for method in methods:
     if not os.path.exists(os.getcwd() + f'/local_data/{method}'):
         os.makedirs(os.getcwd() + f'/local_data/{method}')
 
 
-# %%
-
-for method in methods:
     print(f"Running {method}")
     pi12, neighbor_initial_obj, initial_obj_gene_cos, neighbor_final_obj, obj_gene_cos, new_slices = run_method(sliceA, sliceB, data1, data2, method)
 
     if pi12 is None:
-        continue
+        return
 
     save_pi_matrix(pi12, data1, data2, method)
 
     print(f"Performance Metrics for {method}\n=====================================")
     get_perf_metrics(new_slices, pi12, neighbor_initial_obj, initial_obj_gene_cos, neighbor_final_obj, obj_gene_cos, method)
 
-# %%
-plot_results()
 
-# %%
-
-
+if __name__ == "__main__":
+    main()
 
