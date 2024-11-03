@@ -404,12 +404,16 @@ import argparse
 def main():
 
     parser = argparse.ArgumentParser(description="reproduce")
-    parser.add_argument("--method", type=str, required=True,
+    parser.add_argument("--run_id", type=str, required=True,
                         help="Unique identifier for this run")
     
     args = parser.parse_args()
-    method = args.method
-
+    run_id = args.run_id
+    run_id = int(run_id)
+    
+    run_id_to_method = ["promt", "paste", "stalign"]
+    method = run_id_to_method[run_id]
+                        
     data_dir = f"{os.getcwd()}/data/Mouse_brain_MERFISH/"
     data1="adata24wk_donor_id_10_slice_1"
     data2="adata90wk_donor_id_5_slice_1"
