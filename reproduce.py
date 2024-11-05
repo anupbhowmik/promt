@@ -1,32 +1,13 @@
-
-
 import matplotlib.pyplot as plt
 import numpy as np
 import scanpy as sc
-
-import locale
-import inspect
 import os
 import sys
-locale.getpreferredencoding = lambda: "UTF-8"
-
-sys.path.append('MODIFIED_PYTHON_MODULES/modified_ot')
+import pandas as pd
 import ot
-
-module_path = inspect.getfile(ot)
-# Get the directory containing the module
-module_directory = os.path.dirname(module_path)
-
-print(f"Module directory: {module_directory}")
-
-sys.path.append('MODIFIED_PYTHON_MODULES/modified_paste')
 import paste as pst
 
-module_path = inspect.getfile(pst)
-module_directory = os.path.dirname(module_path)
-
-print(f"Module directory: {module_directory}")
-
+cwd = "/mount/samee/anup/promt-reproducibility"
 
 """# ***Data***"""
 
@@ -35,43 +16,11 @@ def load_data(data_dir, data1, data2):
     sliceA = sc.read_h5ad(data_dir + data1 + ".h5ad")
     sliceB = sc.read_h5ad(data_dir + data2 + ".h5ad")
 
-    xI = np.array(sliceA.obsm['spatial'] [:, 0])
-    yI = np.array(sliceA.obsm['spatial'] [:, 1])
-
-    xJ = np.array(sliceB.obsm['spatial'] [:, 0])
-    yJ = np.array(sliceB.obsm['spatial'] [:, 1])
-
-    plt.scatter(xI,yI,s=1,alpha=1, label='source')
-    plt.axis("off")
-    plt.legend()
-    plt.show()
-
-    plt.scatter(xJ,yJ,s=1,alpha=1, c='#ff7f0e',  label='target')
-    plt.axis("off")
-    plt.legend()
-    plt.show()
-
     return sliceA, sliceB
 
 def visualize_alignment(sliceA, sliceB, pi12):
     slices, pis = [sliceA, sliceB], [pi12]
     new_slices = pst.stack_slices_pairwise(slices, pis)
-
-    slice_colors = ['#e41a1c','#377eb8']
-
-    xI_new = new_slices[0].obsm['spatial'][:, 0]
-    yI_new = new_slices[0].obsm['spatial'][:, 1]
-
-    xJ_new = new_slices[1].obsm['spatial'][:, 0]
-    yJ_new = new_slices[1].obsm['spatial'][:, 1]
-
-    print("====================\nAligned slices")
-
-    plt.scatter(xI_new,yI_new,s=1,alpha=0.5, label='source', c=slice_colors[0])
-    plt.scatter(xJ_new,yJ_new,s=1,alpha=0.5, label = 'target', c=slice_colors[1])
-    plt.axis("off")
-    plt.legend()
-    plt.show()
 
     return new_slices
 
@@ -276,13 +225,13 @@ def run_stalign(sliceA, sliceB, data1, data2, dataPath):
     yI_LDDMM = yI_LDDMM + translation_vector[1]
 
     # visualize the alignment
-    plt.clf()
-    plt.scatter(xI_LDDMM,yI_LDDMM,s=1,alpha=0.4, label = 'source STaligned')
-    plt.scatter(xJ,yJ,s=1,alpha=0.2, label='target')
-    plt.legend(markerscale = 10, loc = 'lower left')
-    plt.axis("off")
-    plt.show()
-    plt.clf()
+    # plt.clf()
+    # plt.scatter(xI_LDDMM,yI_LDDMM,s=1,alpha=0.4, label = 'source STaligned')
+    # plt.scatter(xJ,yJ,s=1,alpha=0.2, label='target')
+    # plt.legend(markerscale = 10, loc = 'lower left')
+    # plt.axis("off")
+    # plt.show()
+    # plt.clf()
 
     sliceA_LDDMM = sliceA.copy()
     # update the spatial coordinates
@@ -311,7 +260,7 @@ def run_method(sliceA, sliceB, data1, data2, method_name):
                                             use_gpu = True, return_obj = True,
                                             sliceA_name=data1, sliceB_name=data2, alpha=0.1, beta= 0.8, gamma=0.8, radius=100,
                                             numItermax = 20000, overwrite = True, neighborhood_dissimilarity = 'jsd',
-                                            filePath = f'{os.getcwd()}/local_data/{method_name}')
+                                            filePath = f'{cwd}/local_data/{method_name}')
 
         new_slices = visualize_alignment(sliceA, sliceB, pi12)
         return pi12, initial_obj_neighbor, initial_obj_gene_cos, final_obj_neighbor, final_obj_gene_cos, new_slices
@@ -322,20 +271,20 @@ def run_method(sliceA, sliceB, data1, data2, method_name):
                                     use_gpu = True, return_obj = True,
                                     sliceA_name=data1, sliceB_name=data2, alpha=0.1, beta= 0.8, gamma=0.8, radius=100,
                                     numItermax = 20000, overwrite = True,
-                                    filePath = f'{os.getcwd()}/local_data/{method_name}')
+                                    filePath = f'{cwd}/local_data/{method_name}')
 
         new_slices = visualize_alignment(sliceA, sliceB, pi12)
         return pi12, initial_obj_neighbor, initial_obj_gene_cos, final_obj_neighbor, final_obj_gene_cos, new_slices
 
     elif method_name.lower() == 'stalign':
-        pi12, initial_obj_neighbor, initial_obj_gene_cos, final_obj_neighbor, final_obj_gene_cos, new_slices = run_stalign(sliceA, sliceB, data1, data2, f'{os.getcwd()}/local_data/{method_name}')
+        pi12, initial_obj_neighbor, initial_obj_gene_cos, final_obj_neighbor, final_obj_gene_cos, new_slices = run_stalign(sliceA, sliceB, data1, data2, f'{cwd}/local_data/{method_name}')
 
     else:
         print("Method not found")
         return None
 
 def save_pi_matrix(pi12, data1, data2, method_name):
-    filePath = f'{os.getcwd()}/local_data/{method_name}'
+    filePath = f'{cwd}/local_data/{method_name}'
     np.save(f"{filePath}/pi_matrix_{data1}_{data2}.npy", pi12)
 
 def cell_type_matching_metric(sliceA, sliceB, pi_mat):
@@ -365,9 +314,6 @@ def get_perf_metrics(new_slices, pi12, neighbor_initial_obj, initial_obj_gene_co
     print(f"Cosine Distance of Gene Expression\nBefore: {initial_obj_gene_cos:.5f}, After: {obj_gene_cos:.5f}, Improvement: {gene_expr_improvement:.5f}%")
     print(f"Cell-type Correspondence: {percentage:.5f}%")
 
-import pandas as pd
-import matplotlib.pyplot as plt
-
 def plot_results():
     # Data for different time points
     data = {
@@ -391,14 +337,14 @@ def plot_results():
         }
     }
 
-    # Plotting each dataset
-    for week, values in data.items():
-        df = pd.DataFrame(values)
-        ax = df.plot(x='slice', kind='bar', title=f'Results at {week}', figsize=(8, 5))
-        ax.set_ylabel('Cell-type correspondence (%)')
-        ax.get_legend().remove()
-        plt.xticks(rotation=0)
-        plt.show()
+    # # Plotting each dataset
+    # for week, values in data.items():
+    #     df = pd.DataFrame(values)
+    #     ax = df.plot(x='slice', kind='bar', title=f'Results at {week}', figsize=(8, 5))
+    #     ax.set_ylabel('Cell-type correspondence (%)')
+    #     ax.get_legend().remove()
+    #     plt.xticks(rotation=0)
+    #     plt.show()
 
 import argparse
 def main():
@@ -410,24 +356,24 @@ def main():
     args = parser.parse_args()
     run_id = args.run_id
     run_id = int(run_id)
-    
+
     run_id_to_method = ["promt", "paste", "stalign"]
     method = run_id_to_method[run_id]
                         
-    data_dir = f"{os.getcwd()}/data/Mouse_brain_MERFISH/"
+    data_dir = f"{cwd}/data/Mouse_brain_MERFISH/"
     data1="adata24wk_donor_id_10_slice_1"
     data2="adata90wk_donor_id_5_slice_1"
 
     sliceA, sliceB = load_data(data_dir, data1, data2)
 
-    if not os.path.exists(os.getcwd() + f'/local_data/{method}'):
-        os.makedirs(os.getcwd() + f'/local_data/{method}')
-
+    if not os.path.exists(cwd + f'/local_data/{method}'):
+        os.makedirs(cwd + f'/local_data/{method}')
 
     print(f"Running {method}")
     pi12, neighbor_initial_obj, initial_obj_gene_cos, neighbor_final_obj, obj_gene_cos, new_slices = run_method(sliceA, sliceB, data1, data2, method)
 
     if pi12 is None:
+        print("Error: no pi matrix generated")
         return
 
     save_pi_matrix(pi12, data1, data2, method)

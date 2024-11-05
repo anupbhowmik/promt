@@ -50,6 +50,14 @@ The code is tested on ubuntu 20.04 with python `3.10`. It is recommended to use 
   pip install spatialde
   ```
 
+#### Requirements for paste
+
+-
+
+#### Requirements for stalign
+
+-
+
 To utilize the GPU, install [PyTorch](https://pytorch.org/) with CUDA support.
 
 ## How to reproduce the results
