@@ -50,15 +50,17 @@ The code is tested on ubuntu 20.04 with python `3.10`. It is recommended to use 
   pip install spatialde
   ```
 
+To utilize the GPU, install [PyTorch](https://pytorch.org/) with CUDA support.
+
 #### Requirements for paste
+
+`paste` takes quite a long time to run especially for such a large dataset.
 
 -
 
 #### Requirements for stalign
 
 -
-
-To utilize the GPU, install [PyTorch](https://pytorch.org/) with CUDA support.
 
 ## How to reproduce the results
 
