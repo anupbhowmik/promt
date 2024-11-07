@@ -66,4 +66,22 @@ To utilize the GPU, install [PyTorch](https://pytorch.org/) with CUDA support.
 
 - Create a directory `data/Mouse_brain_MERFISH` and place the preprocessed data files in it.
 
-- Tutorial is available at [PROMT_tutorial.ipynb](./PROMT_tutorial.ipynb) in this repository.
+- Tutorials are available in python notebooks.
+
+### Generate Results for Table 1 - 3 and Figure 2
+
+Run the notebook `alignment_performance_metric.ipynb` with the following data pairs:
+
+| Source                        | Target                        |
+| ----------------------------- | ----------------------------- |
+| adata4wk_donor_id_1_slice_0   | adata4wk_donor_id_4_slice_1   |
+| adata4wk_donor_id_1_slice_0   | adata4wk_donor_id_4_slice_2   |
+| adata4wk_donor_id_4_slice_1   | adata4wk_donor_id_4_slice_2   |
+| adata24wk_donor_id_10_slice_0 | adata24wk_donor_id_10_slice_1 |
+| adata24wk_donor_id_10_slice_0 | adata24wk_donor_id_10_slice_2 |
+| adata24wk_donor_id_10_slice_1 | adata24wk_donor_id_10_slice_2 |
+| adata90wk_donor_id_2_slice_0  | adata90wk_donor_id_5_slice_1  |
+| adata90wk_donor_id_2_slice_0  | adata90wk_donor_id_5_slice_2  |
+| adata90wk_donor_id_5_slice_1  | adata90wk_donor_id_5_slice_2  |
+
+###
