@@ -334,6 +334,71 @@ def get_neighborhood_distribution(curr_slice, radius):
 
     return np.array(cells_within_radius)
 
+def cosine_dist_calculator(sliceA, sliceB, sliceA_name, sliceB_name, filePath, use_rep = None, use_gpu = False, nx = ot.backend.NumpyBackend(), beta = 0.8, overwrite = False):
+    from sklearn.metrics.pairwise import cosine_distances
+    import os
+    import pandas as pd
+
+    A_X, B_X = nx.from_numpy(to_dense_array(extract_data_matrix(sliceA,use_rep))), nx.from_numpy(to_dense_array(extract_data_matrix(sliceB,use_rep)))
+
+    if isinstance(nx,ot.backend.TorchBackend) and use_gpu:
+        A_X = A_X.cuda()
+        B_X = B_X.cuda()
+
+   
+    s_A = A_X + 0.01
+    s_B = B_X + 0.01
+
+    
+    one_hot_cell_type_sliceA = pd.get_dummies(sliceA.obs['cell_type_annot'])
+    # print ("one_hot_cell_type_sliceA type: ", type(one_hot_cell_type_sliceA))
+    one_hot_cell_type_sliceA = one_hot_cell_type_sliceA.to_numpy()
+
+    one_hot_cell_type_sliceB = pd.get_dummies(sliceB.obs['cell_type_annot'])
+    one_hot_cell_type_sliceB = one_hot_cell_type_sliceB.to_numpy()
+
+    if isinstance(nx,ot.backend.TorchBackend):
+        s_A = s_A.cpu().detach().numpy()
+        s_B = s_B.cpu().detach().numpy()
+
+    # Concatenate along a specified axis (0 for rows, 1 for columns)
+    s_A = np.concatenate((s_A, beta * one_hot_cell_type_sliceA), axis=1)
+    s_B = np.concatenate((s_B, beta * one_hot_cell_type_sliceB), axis=1)
+
+    s_A = torch.from_numpy(s_A)
+    s_B = torch.from_numpy(s_B)
+
+    if torch.cuda.is_available():
+        print("CUDA is available on your system.")
+        s_A = s_A.to('cuda')
+        s_B = s_B.to('cuda')
+
+    else:
+        print("CUDA is not available on your system.")
+
+    fileName = f"{filePath}/cosine_dist_gene_expr_{sliceA_name}_{sliceB_name}.npy"
+    
+    if os.path.exists(fileName) and not overwrite:
+        print("Loading precomputed Cosine distance of gene expression for slice A and slice B")
+        cosine_dist_gene_expr = np.load(fileName)
+    else:
+        print("Calculating cosine dist of gene expression for slice A and slice B")
+
+        # calculate cosine distance manually
+        # cosine_dist_gene_expr = 1 - (s_A @ s_B.T) / s_A.norm(dim=1)[:, None] / s_B.norm(dim=1)[None, :]
+        # cosine_dist_gene_expr = cosine_dist_gene_expr.cpu().detach().numpy()
+
+        # use sklearn's cosine_distances
+        if torch.cuda.is_available():
+            s_A = s_A.cpu().detach().numpy()
+            s_B = s_B.cpu().detach().numpy()
+        cosine_dist_gene_expr = cosine_distances(s_A, s_B)
+
+        print("Saving cosine dist of gene expression for slice A and slice B")
+        np.save(fileName, cosine_dist_gene_expr)
+
+    return cosine_dist_gene_expr
+
 
 ## Covert a sparse matrix into a dense np array
 to_dense_array = lambda X: X.toarray() if isinstance(X,scipy.sparse.csr.spmatrix) else np.array(X)

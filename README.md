@@ -64,6 +64,8 @@ To utilize the GPU, install [PyTorch](https://pytorch.org/) with CUDA support.
 
 ## How to reproduce the results
 
+> Note: Some minor mismatch might occur due to the precision of the floating-point numbers.
+
 > Note: This part is not finalized yet. It will be updated as the files are organized and will be finalized in the latest release.
 
 - Create a directory `data/Mouse_brain_MERFISH` and place the preprocessed data files in it.
