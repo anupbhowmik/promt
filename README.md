@@ -20,7 +20,6 @@ Datasets are collected from [cellxgene](https://cellxgene.cziscience.com/collect
 All preprocessed datasets are available on
 [zenodo](https://zenodo.org/records/13997882).
 
-
 ## Environment setup
 
 The code is tested on ubuntu 20.04 with python `3.10`. It is recommended to use a python virtual environment to run the code.
@@ -39,15 +38,11 @@ The code is tested on ubuntu 20.04 with python `3.10`. It is recommended to use 
 - anndata `0.10.9`
 - spatialde `1.1.3`
 
-  ```bash
-  pip install spatialde
-  ```
-
 To utilize the GPU, install [PyTorch](https://pytorch.org/) with CUDA support.
 
 ### Requirements for stalign
 
-- stalign
+- Install stalign package
 
   ```bash
   pip install --upgrade "git+https://github.com/JEFworks-Lab/STalign.git"
@@ -57,9 +52,6 @@ To utilize the GPU, install [PyTorch](https://pytorch.org/) with CUDA support.
 
 > [!NOTE]
 > Some minor mismatch might occur due to the precision of the floating-point numbers and rounding errors. In case of `paste`, it takes a long time to run the code. It is recommended to run the code on a high-performance machine.
-
-> [!WARNING]
-> This part is not finalized yet. It will be updated as the files are organized and will be finalized in the latest release.
 
 - Create a directory `data/Mouse_brain_MERFISH` and place the preprocessed data files in it.
 
@@ -109,7 +101,7 @@ Run the block `Show Box plot` in the notebook.
 
 ### Generate Results for Figure 5
 
-todo: check the notebook
+Run the block `### Run Relation Between Neighborhood Count and Age Progression Score` in the notebook.
 
 ### Generate Results for Figure 6
 
