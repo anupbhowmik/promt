@@ -101,7 +101,7 @@ Run the block `Show Box plot` in the notebook.
 
 ### Generate Results for Figure 5
 
-Run the block `### Run Relation Between Neighborhood Count and Age Progression Score` in the notebook.
+Run the block `Run Relation Between Neighborhood Count and Age Progression Score` in the notebook.
 
 ### Generate Results for Figure 6
 
