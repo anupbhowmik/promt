@@ -81,7 +81,6 @@ Run the notebook `downstream_analysis.ipynb` with the following data pairs:
 | ----------------------------- | ----------------------------- |
 | adata4wk_donor_id_4_slice_1   | adata24wk_donor_id_10_slice_1 |
 | adata24wk_donor_id_10_slice_1 | adata90wk_donor_id_5_slice_1  |
-| adata4wk_donor_id_4_slice_1   | adata90wk_donor_id_5_slice_1  |
 
 ### Generate Results for Table 4
 
