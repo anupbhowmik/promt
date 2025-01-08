@@ -119,7 +119,7 @@ def line_search_armijo(
         return nx.from_numpy(alpha, type_as=xk0), fc[0], nx.from_numpy(phi1, type_as=xk0)
 
 
-def generic_conditional_gradient_MERFISH(a, b, M1, M2, f, df, reg1, reg2, lp_solver, line_search,
+def generic_conditional_gradient_incent(a, b, M1, M2, f, df, reg1, reg2, lp_solver, line_search,
                                          gamma,
                                           G0=None,
                                  numItermax=6000, stopThr=1e-9,
@@ -548,7 +548,7 @@ def generic_conditional_gradient(a, b, M, f, df, reg1, reg2, lp_solver, line_sea
     else:
         return G
     
-def cg_MERFISH(a, b, M1, M2, reg, f, df, gamma, G0=None, line_search=line_search_armijo,
+def cg_incent(a, b, M1, M2, reg, f, df, gamma, G0=None, line_search=line_search_armijo,
        numItermax=6000, numItermaxEmd=100000, stopThr=1e-9, stopThr2=1e-9,
        verbose=False, log=False, **kwargs):
     r"""
@@ -638,7 +638,7 @@ def cg_MERFISH(a, b, M1, M2, reg, f, df, gamma, G0=None, line_search=line_search
     def lp_solver(a, b, M, **kwargs):
         return emd(a, b, M, numItermaxEmd, log=True)
 
-    return generic_conditional_gradient_MERFISH(a, b, M1, M2, f, df, reg, None, lp_solver, line_search, G0=G0,
+    return generic_conditional_gradient_incent(a, b, M1, M2, f, df, reg, None, lp_solver, line_search, G0=G0,
                                                 gamma = gamma,
                                         numItermax=numItermax, stopThr=stopThr,
                                         stopThr2=stopThr2, verbose=verbose, log=log, **kwargs)

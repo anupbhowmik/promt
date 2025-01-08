@@ -15,7 +15,7 @@ from .helper import get_neighborhood_distribution, jensenshannon_divergence_back
 
 
 
-def pairwise_align_MERFISH(
+def pairwise_align_incent(
     sliceA: AnnData, 
     sliceB: AnnData, 
     alpha: float,
@@ -44,7 +44,7 @@ def pairwise_align_MERFISH(
 
     This method is written by Anup Bhowmik, CSE, BUET
 
-    Calculates and returns optimal alignment of two slices of MERFISH data. 
+    Calculates and returns optimal alignment of two slices of single cell MERFISH data. 
     
     Args:
         sliceA: Slice A to align.
@@ -82,7 +82,7 @@ def pairwise_align_MERFISH(
 
     logFile = open(f"{filePath}/log.txt", "w")
 
-    logFile.write(f"pairwise_align_MERFISH\n")
+    logFile.write(f"pairwise_align_INCENT\n")
     currDateTime = datetime.datetime.now()
 
     # logFile.write(f"{currDateTime.date()}, {currDateTime.strftime("%I:%M %p")} BDT, {currDateTime.strftime("%A")} \n")
@@ -295,7 +295,7 @@ def pairwise_align_MERFISH(
 
     # D_A: pairwise dist matrix of sliceA spots coords
     # a: initial distribution(uniform) of sliceA spots
-    pi, logw = my_fused_gromov_wasserstein_MERFISH(M1, M2, D_A, D_B, a, b, G_init = G_init, loss_fun='square_loss', alpha= alpha, gamma=gamma, log=True, numItermax=numItermax,verbose=verbose, use_gpu = use_gpu)
+    pi, logw = my_fused_gromov_wasserstein_incent(M1, M2, D_A, D_B, a, b, G_init = G_init, loss_fun='square_loss', alpha= alpha, gamma=gamma, log=True, numItermax=numItermax,verbose=verbose, use_gpu = use_gpu)
     pi = nx.to_numpy(pi)
     # obj = nx.to_numpy(logw['fgw_dist'])
 
@@ -413,7 +413,7 @@ def pairwise_align(
 
     logFile = open(f"{filePath}/log.txt", "w")
 
-    logFile.write(f"pairwise_align_MERFISH\n")
+    logFile.write(f"pairwise_align_incent\n")
     currDateTime = datetime.datetime.now()
     # logFile.write(f"{currDateTime.strftime("%d-%m-%Y")}, {currDateTime.strftime("%I:%M %p")}, {currDateTime.strftime("%A")} \n")
     logFile.write(f"{currDateTime}\n")
@@ -788,7 +788,7 @@ def center_NMF(W, H, slices, pis, lmbda, n_components, random_seed, dissimilarit
     return W_new, H_new
 
 
-def my_fused_gromov_wasserstein_MERFISH(M1, M2, C1, C2, p, q, gamma, G_init = None, loss_fun='square_loss', alpha = 0.1, beta = 0.8, armijo=False, log=False,numItermax=6000, tol_rel=1e-9, tol_abs=1e-9, use_gpu = False, **kwargs):
+def my_fused_gromov_wasserstein_incent(M1, M2, C1, C2, p, q, gamma, G_init = None, loss_fun='square_loss', alpha = 0.1, beta = 0.8, armijo=False, log=False,numItermax=6000, tol_rel=1e-9, tol_abs=1e-9, use_gpu = False, **kwargs):
     """
     This method is written by Anup Bhowmik, CSE, BUET
 
@@ -871,7 +871,7 @@ def my_fused_gromov_wasserstein_MERFISH(M1, M2, C1, C2, p, q, gamma, G_init = No
 
     if log:
    
-        res, log = ot.optim.cg_MERFISH(p, q, (1 - alpha) * M1, (1 - alpha) * M2, alpha, f, df, gamma = gamma, G0 = G0, line_search = line_search, log=True, numItermax=numItermax, stopThr=tol_rel, stopThr2=tol_abs, **kwargs)
+        res, log = ot.optim.cg_incent(p, q, (1 - alpha) * M1, (1 - alpha) * M2, alpha, f, df, gamma = gamma, G0 = G0, line_search = line_search, log=True, numItermax=numItermax, stopThr=tol_rel, stopThr2=tol_abs, **kwargs)
 
         fgw_dist = log['loss'][-1]
 
@@ -881,7 +881,7 @@ def my_fused_gromov_wasserstein_MERFISH(M1, M2, C1, C2, p, q, gamma, G_init = No
         return res, log
 
     else:
-        return ot.optim.cg_MERFISH(p, q, (1 - alpha) * M1, (1 - alpha) * M2, alpha, f, df, gamma = gamma, G0 = G0, line_search = line_search, log=True, numItermax=numItermax, stopThr=tol_rel, stopThr2=tol_abs, **kwargs)
+        return ot.optim.cg_incent(p, q, (1 - alpha) * M1, (1 - alpha) * M2, alpha, f, df, gamma = gamma, G0 = G0, line_search = line_search, log=True, numItermax=numItermax, stopThr=tol_rel, stopThr2=tol_abs, **kwargs)
 
 
 def my_fused_gromov_wasserstein(M, C1, C2, p, q, G_init = None, loss_fun='square_loss', alpha=0.5, armijo=False, log=False,numItermax=200, tol_rel=1e-9, tol_abs=1e-9, use_gpu = False, **kwargs):
