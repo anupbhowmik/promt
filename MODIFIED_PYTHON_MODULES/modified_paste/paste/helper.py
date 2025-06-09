@@ -399,6 +399,14 @@ def cosine_dist_calculator(sliceA, sliceB, sliceA_name, sliceB_name, filePath, u
 
     return cosine_dist_gene_expr
 
+def pairwise_msd(A, B):
+    A = np.asarray(A)
+    B = np.asarray(B)
+
+    # A: (m, d), B: (n, d)
+    diff = A[:, np.newaxis, :] - B[np.newaxis, :, :]  # shape: (m, n, d)
+    msd = np.mean(diff ** 2, axis=2)  # shape: (m, n)
+    return msd
 
 ## Covert a sparse matrix into a dense np array
 to_dense_array = lambda X: X.toarray() if isinstance(X,scipy.sparse.csr.spmatrix) else np.array(X)

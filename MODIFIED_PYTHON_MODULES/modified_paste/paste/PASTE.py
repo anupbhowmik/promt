@@ -11,8 +11,7 @@ import pandas as pd
 from .visualization import stack_slices_pairwise
 import os
 from sklearn.decomposition import NMF
-from .helper import get_neighborhood_distribution, jensenshannon_divergence_backend, intersect, kl_divergence_backend, to_dense_array, extract_data_matrix, cosine_dist_calculator
-
+from .helper import get_neighborhood_distribution, jensenshannon_divergence_backend, intersect, kl_divergence_backend, to_dense_array, extract_data_matrix, cosine_dist_calculator, pairwise_msd
 
 
 def pairwise_align_incent(
@@ -234,6 +233,9 @@ def pairwise_align_incent(
             cosine_dist_neighborhood = cosine_dist_neighborhood.cpu().numpy()
         M2 = nx.from_numpy(cosine_dist_neighborhood)
 
+    elif neighborhood_dissimilarity == 'msd':
+        msd_neighborhood = pairwise_msd(sliceA, sliceB)
+
     
     if isinstance(nx,ot.backend.TorchBackend) and use_gpu:
         # M = M.cuda()
@@ -275,22 +277,27 @@ def pairwise_align_incent(
     G = np.ones((a.shape[0], b.shape[0])) / (a.shape[0] * b.shape[0])
 
     if neighborhood_dissimilarity == 'jsd':
-        initial_obj_neighbor_jsd = np.sum(js_dist_neighborhood*G)
+        initial_obj_neighbor = np.sum(js_dist_neighborhood*G)
+    if neighborhood_dissimilarity == 'msd':
+        initial_obj_neighbor = np.sum(msd_neighborhood*G)
     elif neighborhood_dissimilarity == 'cosine':
-        initial_obj_neighbor_cos = np.sum(cosine_dist_neighborhood*G)
+        initial_obj_neighbor = np.sum(cosine_dist_neighborhood*G)
 
-    initial_obj_gene_cos = np.sum(cosine_dist_gene_expr*G)
+    initial_obj_gene = np.sum(cosine_dist_gene_expr*G)
 
     if neighborhood_dissimilarity == 'jsd':
-        # print(f"Initial objective neighbor (jsd): {initial_obj_neighbor_jsd}")
-        logFile.write(f"Initial objective neighbor (jsd): {initial_obj_neighbor_jsd}\n")
+        # print(f"Initial objective neighbor (jsd): {initial_obj_neighbor}")
+        logFile.write(f"Initial objective neighbor (jsd): {initial_obj_neighbor}\n")
 
     elif neighborhood_dissimilarity == 'cosine':
         # print(f"Initial objective neighbor (cosine_dist): {initial_obj_neighbor_cos}")
-        logFile.write(f"Initial objective neighbor (cosine_dist): {initial_obj_neighbor_cos}\n")
+        logFile.write(f"Initial objective neighbor (cosine_dist): {initial_obj_neighbor}\n")
+    elif neighborhood_dissimilarity == 'msd':
+        # print(f"Initial objective neighbor (msd): {initial_obj_neighbor}")
+        logFile.write(f"Initial objective neighbor (mean sq distance): {initial_obj_neighbor}\n")
 
-    # print(f"Initial objective gene expr (cosine_dist): {initial_obj_gene_cos}")
-    logFile.write(f"Initial objective (cosine_dist): {initial_obj_gene_cos}\n")
+    # print(f"Initial objective gene expr (cosine_dist): {initial_obj_gene}")
+    logFile.write(f"Initial objective (cosine_dist): {initial_obj_gene}\n")
     
 
     # D_A: pairwise dist matrix of sliceA spots coords
@@ -306,7 +313,9 @@ def pairwise_align_incent(
         for i in range(len(max_indices)):
             jsd_error[i] = pi[i][max_indices[i]] * js_dist_neighborhood[i][max_indices[i]]
 
-        obj_neighbor_jsd = np.sum(jsd_error)
+        final_obj_neighbor = np.sum(jsd_error)
+    elif neighborhood_dissimilarity == 'msd':
+        final_obj_neighbor = np.sum(msd_neighborhood*pi)
 
     elif neighborhood_dissimilarity == 'cosine':
         max_indices = np.argmax(pi, axis=1)
@@ -315,20 +324,20 @@ def pairwise_align_incent(
         for i in range(len(max_indices)):
             cos_error[i] = pi[i][max_indices[i]] * cosine_dist_neighborhood[i][max_indices[i]]
 
-        obj_neighbor_cos = np.sum(cos_error)
+        final_obj_neighbor = np.sum(cos_error)
 
 
-    obj_gene_cos = np.sum(cosine_dist_gene_expr * pi)
+    final_obj_gene = np.sum(cosine_dist_gene_expr * pi)
 
     if neighborhood_dissimilarity == 'jsd':
-        logFile.write(f"Final objective neighbor (jsd): {obj_neighbor_jsd}\n")
-        # print(f"Final objective neighbor (jsd): {obj_neighbor_jsd}\n")
+        logFile.write(f"Final objective neighbor (jsd): {final_obj_neighbor}\n")
+        # print(f"Final objective neighbor (jsd): {final_obj_neighbor}\n")
     elif neighborhood_dissimilarity == 'cosine':
-        logFile.write(f"Final objective neighbor (cosine_dist): {obj_neighbor_cos}\n")
-        # print(f"Final objective neighbor (cosine_dist): {obj_neighbor_cos}\n")
+        logFile.write(f"Final objective neighbor (cosine_dist): {final_obj_neighbor}\n")
+        # print(f"Final objective neighbor (cosine_dist): {final_obj_neighbor}\n")
 
-    logFile.write(f"Final objective gene expr(cosine_dist): {obj_gene_cos}\n")
-    # print(f"Final objective (cosine_dist): {obj_gene_cos}\n")
+    logFile.write(f"Final objective gene expr(cosine_dist): {final_obj_gene}\n")
+    # print(f"Final objective (cosine_dist): {final_obj_gene}\n")
     
 
     logFile.write(f"Runtime: {str(time.time() - start_time)} seconds\n")
@@ -342,20 +351,10 @@ def pairwise_align_incent(
     if isinstance(backend,ot.backend.TorchBackend) and use_gpu:
         torch.cuda.empty_cache()
 
-    if return_obj and neighborhood_dissimilarity == 'jsd':
-        neighbor_initial_obj = initial_obj_neighbor_jsd
-        neighbor_final_obj = obj_neighbor_jsd
-
-    elif return_obj and neighborhood_dissimilarity == 'cosine':
-        neighbor_initial_obj = initial_obj_neighbor_cos
-        neighbor_final_obj = obj_neighbor_cos
-
     if return_obj:
-        return pi, neighbor_initial_obj, initial_obj_gene_cos, neighbor_final_obj, obj_gene_cos
+        return pi, initial_obj_neighbor, initial_obj_gene, final_obj_neighbor, final_obj_gene
     
     return pi
-
-
 
 def pairwise_align(
     sliceA: AnnData, 
