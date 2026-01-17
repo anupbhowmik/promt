@@ -13,7 +13,6 @@ import os
 from sklearn.decomposition import NMF
 from .helper import get_neighborhood_distribution, jensenshannon_divergence_backend, intersect, kl_divergence_backend, to_dense_array, extract_data_matrix, cosine_dist_calculator, pairwise_msd
 
-
 def pairwise_align_incent(
     sliceA: AnnData, 
     sliceB: AnnData, 
@@ -119,6 +118,7 @@ def pairwise_align_incent(
         if gpu_verbose:
             print("Using selected backend cpu. If you want to use gpu, set use_gpu = True.")
 
+    import torch
     if not torch.cuda.is_available():
         use_gpu = False
         print("CUDA is not available on your system. Reverting to CPU.")

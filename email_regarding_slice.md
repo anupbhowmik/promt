@@ -1,0 +1,1 @@
+We filtered the integrated anndata object using age, slice, and donor_id. But it seems that some of the samples contain multiple tissue segments. Is there any way to filter out each of the single samples?

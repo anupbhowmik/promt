@@ -2,3 +2,5 @@ data/
 **/__pycache__/
 local_data/
 .DS_Store
+genes_important_for_slowdown_in_aging_idx_wise.ipynb
+basics.md

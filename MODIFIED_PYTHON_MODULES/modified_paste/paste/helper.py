@@ -118,7 +118,10 @@ def jensenshannon_divergence_backend(X, Y):
     # print(nx.unique(nx.isnan(js_dist)))
 
     if torch.cuda.is_available():
-        return js_dist.numpy()
+        try:
+            return js_dist.numpy()
+        except:
+            return js_dist
     else:
         return js_dist
     
