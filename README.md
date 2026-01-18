@@ -107,3 +107,7 @@ Run the block `Run Relation Between Neighborhood Count and Age Progression Score
 ### Generate Results for Figure 6
 
 Run the block `Heatmap of Age progression score by cell type` in the notebook.
+
+### Gene Contribution to Age Progression Score
+
+Codes for ranking genes based on its contribution to the age progression score can be found in genes_important_cell_type_wise.ipynb.
